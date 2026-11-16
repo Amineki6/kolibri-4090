@@ -1,0 +1,1077 @@
+{
+  "dataset": "HuggingFaceTB/smoltalk",
+  "config": "all",
+  "seed": 20261116,
+  "calibration_split": "train",
+  "eval_split": "test",
+  "calibration": [
+    {
+      "source": "apigen-80k",
+      "full_messages": [
+        {
+          "content": "You are an expert in composing functions. You are given a question and a set of possible functions. \nBased on the question, you will need to make one or more function/tool calls to achieve the purpose. \nIf none of the functions can be used, point it out and refuse to answer. \nIf the given question lacks the parameters required by the function, also point it out.\n\nYou have access to the following tools:\n<tools>[{\"name\": \"mass_from_to_number\", \"description\": \"Converts a mass value from one unit to another using the RapidAPI unit conversion service.\", \"parameters\": {\"number\": {\"description\": \"The numerical value of the mass to be converted.\", \"type\": \"int\", \"default\": \"100\"}, \"is_from\": {\"description\": \"The unit of mass to convert from (e.g., 'kg', 'lb').\", \"type\": \"str\", \"default\": \"gram\"}, \"to\": {\"description\": \"The unit of mass to convert to (e.g., 'kg', 'lb').\", \"type\": \"str\", \"default\": \"pound\"}}}, {\"name\": \"availability\", \"description\": \"Checks if a given URL is archived and currently accessible in the Wayback Machine.\", \"parameters\": {\"url\": {\"description\": \"The URL to check for availability in the Wayback Machine.\", \"type\": \"str\", \"default\": \"http://mashape.com\"}, \"timestamp\": {\"description\": \"The timestamp to look up in Wayback. If not specified, the most recent available capture is returned. The format of the timestamp is 1-14 digits (YYYYMMDDhhmmss). Defaults to '20090101'.\", \"type\": \"str, optional\", \"default\": \"20090101\"}, \"callback\": {\"description\": \"An optional callback to produce a JSONP response. Defaults to None.\", \"type\": \"str, optional\", \"default\": \"\"}}}, {\"name\": \"get_product\", \"description\": \"Fetches product details from the RapidAPI endpoint using the provided product ID and API key.\", \"parameters\": {\"is_id\": {\"description\": \"The product ID to fetch details for.\", \"type\": \"int\", \"default\": \"\"}}}, {\"name\": \"generate_qr\", \"description\": \"Generates a QR code for a given URL using the QR Code Wizard API.\", \"parameters\": {\"url\": {\"description\": \"The URL to be encoded in the QR code.\", \"type\": \"str\", \"default\": \"www.google.com\"}}}]</tools>\n\nThe output MUST strictly adhere to the following format, and NO other text MUST be included.\nThe example format is as follows. Please make sure the parameter type is correct. If no function call is needed, please make the tool calls an empty list '[]'.\n<tool_call>[\n{\"name\": \"func_name1\", \"arguments\": {\"argument1\": \"value1\", \"argument2\": \"value2\"}},\n... (more tool calls as required)\n]</tool_call>",
+          "role": "system"
+        },
+        {
+          "content": "Generate a QR code for the URL 'https://www.example.com'.",
+          "role": "user"
+        },
+        {
+          "content": "<tool_call>[{\"name\": \"generate_qr\", \"arguments\": {\"url\": \"https://www.example.com\"}}]</tool_call>",
+          "role": "assistant"
+        }
+      ],
+      "prompt_messages": [
+        {
+          "content": "You are an expert in composing functions. You are given a question and a set of possible functions. \nBased on the question, you will need to make one or more function/tool calls to achieve the purpose. \nIf none of the functions can be used, point it out and refuse to answer. \nIf the given question lacks the parameters required by the function, also point it out.\n\nYou have access to the following tools:\n<tools>[{\"name\": \"mass_from_to_number\", \"description\": \"Converts a mass value from one unit to another using the RapidAPI unit conversion service.\", \"parameters\": {\"number\": {\"description\": \"The numerical value of the mass to be converted.\", \"type\": \"int\", \"default\": \"100\"}, \"is_from\": {\"description\": \"The unit of mass to convert from (e.g., 'kg', 'lb').\", \"type\": \"str\", \"default\": \"gram\"}, \"to\": {\"description\": \"The unit of mass to convert to (e.g., 'kg', 'lb').\", \"type\": \"str\", \"default\": \"pound\"}}}, {\"name\": \"availability\", \"description\": \"Checks if a given URL is archived and currently accessible in the Wayback Machine.\", \"parameters\": {\"url\": {\"description\": \"The URL to check for availability in the Wayback Machine.\", \"type\": \"str\", \"default\": \"http://mashape.com\"}, \"timestamp\": {\"description\": \"The timestamp to look up in Wayback. If not specified, the most recent available capture is returned. The format of the timestamp is 1-14 digits (YYYYMMDDhhmmss). Defaults to '20090101'.\", \"type\": \"str, optional\", \"default\": \"20090101\"}, \"callback\": {\"description\": \"An optional callback to produce a JSONP response. Defaults to None.\", \"type\": \"str, optional\", \"default\": \"\"}}}, {\"name\": \"get_product\", \"description\": \"Fetches product details from the RapidAPI endpoint using the provided product ID and API key.\", \"parameters\": {\"is_id\": {\"description\": \"The product ID to fetch details for.\", \"type\": \"int\", \"default\": \"\"}}}, {\"name\": \"generate_qr\", \"description\": \"Generates a QR code for a given URL using the QR Code Wizard API.\", \"parameters\": {\"url\": {\"description\": \"The URL to be encoded in the QR code.\", \"type\": \"str\", \"default\": \"www.google.com\"}}}]</tools>\n\nThe output MUST strictly adhere to the following format, and NO other text MUST be included.\nThe example format is as follows. Please make sure the parameter type is correct. If no function call is needed, please make the tool calls an empty list '[]'.\n<tool_call>[\n{\"name\": \"func_name1\", \"arguments\": {\"argument1\": \"value1\", \"argument2\": \"value2\"}},\n... (more tool calls as required)\n]</tool_call>",
+          "role": "system"
+        },
+        {
+          "content": "Generate a QR code for the URL 'https://www.example.com'.",
+          "role": "user"
+        }
+      ]
+    },
+    {
+      "source": "everyday-conversations",
+      "full_messages": [
+        {
+          "content": "Hi",
+          "role": "user"
+        },
+        {
+          "content": "Hello! How can I help you today?",
+          "role": "assistant"
+        },
+        {
+          "content": "I'm starting to learn about organic chemistry and I was wondering what it's all about.",
+          "role": "user"
+        },
+        {
+          "content": "Organic chemistry is the study of carbon-based compounds and their properties, reactions, and uses. It's a branch of chemistry that deals with living organisms and their interactions.",
+          "role": "assistant"
+        },
+        {
+          "content": "That sounds interesting. What are some common types of organic compounds?",
+          "role": "user"
+        },
+        {
+          "content": "Some common types of organic compounds include hydrocarbons, such as alkanes, alkenes, and alkynes, as well as functional groups like alcohols, acids, and amines. These compounds are the building blocks of many biological molecules, like DNA, proteins, and carbohydrates.",
+          "role": "assistant"
+        },
+        {
+          "content": "Okay, got it. Are there any key concepts I should focus on when starting to learn organic chemistry?",
+          "role": "user"
+        },
+        {
+          "content": "Yes, understanding atomic orbitals, hybridization, and stereochemistry are essential concepts in organic chemistry. It's also important to learn about different types of reactions, such as substitution, elimination, and addition reactions.",
+          "role": "assistant"
+        }
+      ],
+      "prompt_messages": [
+        {
+          "content": "Hi",
+          "role": "user"
+        },
+        {
+          "content": "Hello! How can I help you today?",
+          "role": "assistant"
+        },
+        {
+          "content": "I'm starting to learn about organic chemistry and I was wondering what it's all about.",
+          "role": "user"
+        }
+      ]
+    },
+    {
+      "source": "explore-instruct-rewriting",
+      "full_messages": [
+        {
+          "content": "You are an AI rewriting assistant. You will be provided with a text and you need to rewrite it according to the user's instructions.",
+          "role": "system"
+        },
+        {
+          "content": "Rewrite this idiom to be more easily understood:\nIt's raining cats and dogs.",
+          "role": "user"
+        },
+        {
+          "content": "It's raining very, very hard!",
+          "role": "assistant"
+        }
+      ],
+      "prompt_messages": [
+        {
+          "content": "You are an AI rewriting assistant. You will be provided with a text and you need to rewrite it according to the user's instructions.",
+          "role": "system"
+        },
+        {
+          "content": "Rewrite this idiom to be more easily understood:\nIt's raining cats and dogs.",
+          "role": "user"
+        }
+      ]
+    },
+    {
+      "source": "metamathqa-50k",
+      "full_messages": [
+        {
+          "content": "Mrs. Young makes bonnets for kids in the orphanage. On Monday, she made 10 bonnets, on Tuesday and Wednesday combined she made twice more than on Monday, while on Thursday she made 5 more than on Monday, and on Friday she made 5 less than on Thursday. Then, she divided up the bonnets evenly and sent them to 5 orphanages. How many bonnets did Mrs. Young send to each orphanage?",
+          "role": "user"
+        },
+        {
+          "content": "On Monday, Mrs. Young made 10 bonnets.\nOn Tuesday and Wednesday combined, she made twice more than on Monday, which is 10 x 2 = 20 bonnets.\nOn Thursday, she made 5 more than on Monday, which is 10 + 5 = 15 bonnets.\nOn Friday, she made 5 less than on Thursday, which is 15 - 5 = 10 bonnets.\nIn total, Mrs. Young made 10 + 20 + 15 + 10 = 55 bonnets.\nShe sent the bonnets to 5 orphanages, so she sent 55 / 5 = 11 bonnets to each orphanage.\n#### 11\nThe answer is: 11",
+          "role": "assistant"
+        }
+      ],
+      "prompt_messages": [
+        {
+          "content": "Mrs. Young makes bonnets for kids in the orphanage. On Monday, she made 10 bonnets, on Tuesday and Wednesday combined she made twice more than on Monday, while on Thursday she made 5 more than on Monday, and on Friday she made 5 less than on Thursday. Then, she divided up the bonnets evenly and sent them to 5 orphanages. How many bonnets did Mrs. Young send to each orphanage?",
+          "role": "user"
+        }
+      ]
+    },
+    {
+      "source": "numina-cot-100k",
+      "full_messages": [
+        {
+          "content": "Determine the sum of the values of $k$ for which the area of the triangle formed by the points $(2, 8)$, $(14, 17)$, and $(6, k)$, where $k$ is an integer, is minimized.",
+          "role": "user"
+        },
+        {
+          "content": "First, find the equation of the line $\\ell$ containing $(2, 8)$ and $(14, 17)$. The slope of $\\ell$ is $\\frac{17-8}{14-2} = \\frac{9}{12} = \\frac{3}{4}$. Therefore, using the point-slope form, the equation becomes:\n\\[ y - 8 = \\frac{3}{4}(x - 2) \\]\n\\[ y = 8 + \\frac{3}{4}(x - 2) \\]\n\\[ y = 8 + \\frac{3}{4}x - \\frac{3}{2} \\]\n\\[ y = \\frac{3}{4}x + \\frac{13}{2} \\]\n\nSubstituting $x = 6$ gives:\n\\[ y = \\frac{3}{4} \\times 6 + \\frac{13}{2} \\]\n\\[ y = \\frac{18}{4} + \\frac{13}{2} \\]\n\\[ y = 4.5 + 6.5 \\]\n\\[ y = 11 \\]\n\nThus, the point $(6, 11)$ lies on the line $\\ell$. To minimize the area of the triangle, $k$ must be $10$ or $12$ (just above or below the line), since these points will be closest to the line.\n\nChecking the area for $k = 10$ and $k = 12$, we find that the perpendicular height from $(6, k)$ to the line $\\ell$ is the same in both cases, as it is a vertical distance of 1 unit (from $k = 11$ to $k = 10$ or $12$). Thus, both triangles $(2, 8), (14, 17), (6, 10)$ and $(2, 8), (14, 17), (6, 12)$ have the same minimal area.\n\nTherefore, the sum of the values of $k$ is $10 + 12 = \\boxed{22}$.",
+          "role": "assistant"
+        }
+      ],
+      "prompt_messages": [
+        {
+          "content": "Determine the sum of the values of $k$ for which the area of the triangle formed by the points $(2, 8)$, $(14, 17)$, and $(6, k)$, where $k$ is an integer, is minimized.",
+          "role": "user"
+        }
+      ]
+    },
+    {
+      "source": "openhermes-100k",
+      "full_messages": [
+        {
+          "content": "Provide a list of five alternative verbs in the sentence.\nHe created a plan.",
+          "role": "user"
+        },
+        {
+          "content": "He devised, formed, constructed, compiled, and fashioned a plan.",
+          "role": "assistant"
+        }
+      ],
+      "prompt_messages": [
+        {
+          "content": "Provide a list of five alternative verbs in the sentence.\nHe created a plan.",
+          "role": "user"
+        }
+      ]
+    },
+    {
+      "source": "self-oss-instruct",
+      "full_messages": [
+        {
+          "content": "Write a Python function `composite_filter(lst, predicate)` that applies a list of filtering functions (predicates) in sequence to a list `lst` of integers and returns a new list containing only the integers that satisfy all the predicates. These predicates are composed functions that each take an integer as input and return a boolean indicating whether the integer satisfies the predicate.\n\n- For example, a potential application of this function could be filtering a list of integers for those that are both even and prime. For this, you'd provide two separate filtering functions, one for evenness and one for prime-ness, and pass them as a list to `composite_filter`.\n\n- You can use the built-in Python functions `map`, `filter`, `all`, and `lambda` to facilitate this function's implementation.",
+          "role": "user"
+        },
+        {
+          "content": "Here's how you can implement the `composite_filter` function:\n\n```python\ndef composite_filter(lst, predicates):\n    return list(filter(lambda x: all(p(x) for p in predicates), lst))\n```\n\nThe `filter` function applies a predicate to each element of the list and returns a new list containing only the elements that satisfy the predicate. In this case, we use a lambda function as the predicate to check if an integer satisfies all the predicates. The `all` function returns `True` if all elements of the iterable are true.",
+          "role": "assistant"
+        }
+      ],
+      "prompt_messages": [
+        {
+          "content": "Write a Python function `composite_filter(lst, predicate)` that applies a list of filtering functions (predicates) in sequence to a list `lst` of integers and returns a new list containing only the integers that satisfy all the predicates. These predicates are composed functions that each take an integer as input and return a boolean indicating whether the integer satisfies the predicate.\n\n- For example, a potential application of this function could be filtering a list of integers for those that are both even and prime. For this, you'd provide two separate filtering functions, one for evenness and one for prime-ness, and pass them as a list to `composite_filter`.\n\n- You can use the built-in Python functions `map`, `filter`, `all`, and `lambda` to facilitate this function's implementation.",
+          "role": "user"
+        }
+      ]
+    },
+    {
+      "source": "smol-constraints",
+      "full_messages": [
+        {
+          "content": "Your response should contain at least 3 sentences. Explain the process of photosynthesis in plants, ensuring to include the role of chlorophyll and the importance of sunlight. Your entire response should be in lowercase letters. no capital letters are allowed.\n",
+          "role": "user"
+        },
+        {
+          "content": "photosynthesis is a process where plants convert light energy into chemical energy. chlorophyll, a green pigment found in the leaves of plants, plays a crucial role by absorbing sunlight, which is essential for the conversion of carbon dioxide and water into glucose and oxygen. sunlight provides the energy needed to drive this process, making it a vital component for the survival and growth of plants.",
+          "role": "assistant"
+        }
+      ],
+      "prompt_messages": [
+        {
+          "content": "Your response should contain at least 3 sentences. Explain the process of photosynthesis in plants, ensuring to include the role of chlorophyll and the importance of sunlight. Your entire response should be in lowercase letters. no capital letters are allowed.\n",
+          "role": "user"
+        }
+      ]
+    },
+    {
+      "source": "smol-magpie-ultra",
+      "full_messages": [
+        {
+          "content": "I need a plan to start a small business selling handmade crafts. I have a good amount of savings to cover startup costs but have limited ongoing financial resources. I'm skilled at creating jewelry, candles, and textiles, but I'm not sure which to focus on. \n\nI'm looking for a way to get started and make my products available to the public as quickly as possible. What would be the most efficient way to get started?",
+          "role": "user"
+        },
+        {
+          "content": "To get started with your handmade crafts business quickly, I recommend focusing on one product category initially, and jewelry is a good starting point. Jewelry often has lower material costs and is relatively easy to produce in small batches, allowing you to test the market without overcommitting resources.\n\nBegin by creating a small, diverse collection of jewelry pieces that showcase your skills and style. Utilize your existing savings to invest in essential tools and initial materials. You can start by selling online through platforms like Etsy or eBay, which offer affordable setup costs and access to a large customer base.\n\nWhile building your online presence, research local craft fairs and markets in your area. These events can be an effective way to showcase your products, gather feedback, and build a customer base with minimal upfront costs. Consider sharing a stall with other artisans to split costs and create a more diverse shopping experience.\n\nOnce you've established a small customer base and gathered feedback, you can reassess your product line and consider expanding into candles and textiles. This phased approach will allow you to test the market, refine your products, and manage your limited ongoing financial resources more effectively.\n\nAs you progress, focus on building a strong online presence, including social media profiles and a simple website, to showcase your products, share behind-the-scenes content, and engage with your growing customer base. Monitor your finances closely and adjust your strategy as needed to ensure the long-term sustainability of your business.",
+          "role": "assistant"
+        },
+        {
+          "content": "How do I price my jewelry pieces so that they are attractive to customers, but also ensure that I make a reasonable profit from each sale?",
+          "role": "user"
+        },
+        {
+          "content": "To price your jewelry pieces effectively, you'll need to calculate the total cost of producing each item and then determine your desired profit margin. Start by breaking down the costs into three categories: materials, time, and overheads.\n\nCalculate the cost of materials, including the price of beads, threads, findings, and any other components used in your jewelry pieces. Consider the quantity of each material used and the cost per unit.\n\nNext, calculate the time spent creating each piece, including design, production, and packaging. Assign an hourly wage to yourself, taking into account your skills, experience, and the level of craftsmanship involved. This will help you determine the labor cost per piece.\n\nOverheads, such as website fees, marketing expenses, and equipment costs, should also be factored into your pricing. As a small business, these costs may be minimal initially, but it's essential to account for them to ensure you're covering all expenses.\n\nOnce you have the total cost per piece, you can determine your pricing strategy. A common approach is to double or triple the total cost to ensure a reasonable profit margin. However, this may not be suitable for all markets or products.\n\nResearch your competitors and target market to understand what customers are willing to pay for similar products. Consider the perceived value of your jewelry pieces, including the materials used, the level of craftsmanship, and the uniqueness of your designs.\n\nAs a starting point, you may want to consider a pricing structure that includes three tiers: low, mid-range, and high-end. This will allow you to offer products at different price points, catering to a broader range of customers and increasing your chances of making sales.\n\nFor example, if a piece costs $10 to produce, you might price it at $25 (low-end), $40 (mid-range), or $60 (high-end), depending on the target market, competition, and perceived value. Monitor customer feedback and sales data to adjust your pricing strategy as needed and ensure you're striking the right balance between attractiveness and profitability.",
+          "role": "assistant"
+        },
+        {
+          "content": "How do I create an effective online presence for my jewelry business and drive traffic to my website or other online sales platforms?",
+          "role": "user"
+        },
+        {
+          "content": "To create an effective online presence for your jewelry business, start by establishing a strong brand identity. Develop a unique and consistent visual aesthetic, including a logo, color palette, and typography, that reflects your brand's personality and style. Ensure that this visual identity is carried across all online platforms.\n\nNext, create a simple and visually appealing website that showcases your jewelry pieces. Use high-quality product images, and include detailed descriptions of each piece, including materials, dimensions, and prices. Make sure your website is optimized for mobile devices, as many customers will access it through their smartphones.\n\nIn addition to your website, establish a presence on social media platforms, such as Instagram, Facebook, and Pinterest, where your target audience is most active. Use these platforms to share high-quality product images, behind-the-scenes content, and customer testimonials. Engage with your followers by responding to comments and messages, and use relevant hashtags to increase visibility.\n\nTo drive traffic to your website, focus on search engine optimization (SEO). Conduct keyword research to identify relevant terms and phrases that customers might use when searching for jewelry like yours. Incorporate these keywords into your website content, including page titles, descriptions, and headings.\n\nAnother effective way to drive traffic is through email marketing. Build an email list by offering incentives, such as discounts or exclusive promotions, to customers who sign up. Send regular newsletters showcasing new products, promotions, and events to keep your customers engaged and encourage repeat business.\n\nInfluencer partnerships can also help drive traffic to your website. Identify influencers in the jewelry or fashion niches who align with your brand values and target audience. Reach out to them to collaborate on content, product reviews, or giveaways.\n\nPaid advertising, such as Google Ads or social media ads, can also be effective in driving traffic to your website. Set a budget and target specific demographics, interests, and keywords to ensure your ads are seen by potential customers.\n\nFinally, optimize your online sales platforms, such as Etsy or eBay, by using high-quality product images, detailed descriptions, and competitive pricing. Utilize the platforms' built-in advertising options, such as promoted listings, to increase visibility.\n\nMonitor your website analytics to track traffic, engagement, and conversion rates. Use this data to refine your online strategy, adjust your content and advertising, and improve your overall online presence.",
+          "role": "assistant"
+        }
+      ],
+      "prompt_messages": [
+        {
+          "content": "I need a plan to start a small business selling handmade crafts. I have a good amount of savings to cover startup costs but have limited ongoing financial resources. I'm skilled at creating jewelry, candles, and textiles, but I'm not sure which to focus on. \n\nI'm looking for a way to get started and make my products available to the public as quickly as possible. What would be the most efficient way to get started?",
+          "role": "user"
+        },
+        {
+          "content": "To get started with your handmade crafts business quickly, I recommend focusing on one product category initially, and jewelry is a good starting point. Jewelry often has lower material costs and is relatively easy to produce in small batches, allowing you to test the market without overcommitting resources.\n\nBegin by creating a small, diverse collection of jewelry pieces that showcase your skills and style. Utilize your existing savings to invest in essential tools and initial materials. You can start by selling online through platforms like Etsy or eBay, which offer affordable setup costs and access to a large customer base.\n\nWhile building your online presence, research local craft fairs and markets in your area. These events can be an effective way to showcase your products, gather feedback, and build a customer base with minimal upfront costs. Consider sharing a stall with other artisans to split costs and create a more diverse shopping experience.\n\nOnce you've established a small customer base and gathered feedback, you can reassess your product line and consider expanding into candles and textiles. This phased approach will allow you to test the market, refine your products, and manage your limited ongoing financial resources more effectively.\n\nAs you progress, focus on building a strong online presence, including social media profiles and a simple website, to showcase your products, share behind-the-scenes content, and engage with your growing customer base. Monitor your finances closely and adjust your strategy as needed to ensure the long-term sustainability of your business.",
+          "role": "assistant"
+        },
+        {
+          "content": "How do I price my jewelry pieces so that they are attractive to customers, but also ensure that I make a reasonable profit from each sale?",
+          "role": "user"
+        }
+      ]
+    },
+    {
+      "source": "smol-rewrite",
+      "full_messages": [
+        {
+          "content": "You're an AI assistant for text re-writing. Rewrite the input text to make it more friendly and approachable while maintaining its main points.",
+          "role": "system"
+        },
+        {
+          "content": "Emily,\n\nI've reviewed the draft of the paper, and I must say, your contributions are lacking. The writing needs to be more precise and data-driven, especially in the economics section. I don't have time to rewrite everything, so I need you to step up and improve your part. I guess writing isn't as important as economics, but we need to get this right.\n\nBest,\nAlex",
+          "role": "user"
+        },
+        {
+          "content": "Hi Emily,\n\nI hope you're doing well! I've had a chance to go through the draft of the paper, and I wanted to share some thoughts. Your work is really important, and I can see the effort you've put into it. However, I think there's an opportunity to make the writing even more precise and data-driven, particularly in the economics section. It's a crucial part of the paper, and I believe with a bit more focus, we can really strengthen it.\n\nI know we're all busy, but I'm confident in your ability to step up and make these improvements. Writing is just as vital as the economic analysis, and getting this right will make a big difference. Let's aim to make this paper the best it can be!\n\nBest,\nAlex",
+          "role": "assistant"
+        }
+      ],
+      "prompt_messages": [
+        {
+          "content": "You're an AI assistant for text re-writing. Rewrite the input text to make it more friendly and approachable while maintaining its main points.",
+          "role": "system"
+        },
+        {
+          "content": "Emily,\n\nI've reviewed the draft of the paper, and I must say, your contributions are lacking. The writing needs to be more precise and data-driven, especially in the economics section. I don't have time to rewrite everything, so I need you to step up and improve your part. I guess writing isn't as important as economics, but we need to get this right.\n\nBest,\nAlex",
+          "role": "user"
+        }
+      ]
+    },
+    {
+      "source": "smol-summarize",
+      "full_messages": [
+        {
+          "content": "Extract and present the main key point of the input text in one very short sentence, including essential details like dates or locations if necessary.",
+          "role": "system"
+        },
+        {
+          "content": "Hi Jake,\n\nThat's a great idea about including interactive elements! I'll definitely consider incorporating some simple experiments and activities to help illustrate the concepts. \n\nAs for your lesson plan, I think focusing on the story of Rutherford's famous gold foil experiment could be really engaging for your students. You could have them act out the experiment and discuss what the results meant. I can send you some resources that might be helpful.\n\nI'm glad we're able to help each other out with our projects. Let me know if you have any other questions or ideas!\n\nBest,\nEmily",
+          "role": "user"
+        },
+        {
+          "content": "Emily agrees to include interactive elements and suggests focusing on Rutherford's gold foil experiment for the lesson plan.",
+          "role": "assistant"
+        }
+      ],
+      "prompt_messages": [
+        {
+          "content": "Extract and present the main key point of the input text in one very short sentence, including essential details like dates or locations if necessary.",
+          "role": "system"
+        },
+        {
+          "content": "Hi Jake,\n\nThat's a great idea about including interactive elements! I'll definitely consider incorporating some simple experiments and activities to help illustrate the concepts. \n\nAs for your lesson plan, I think focusing on the story of Rutherford's famous gold foil experiment could be really engaging for your students. You could have them act out the experiment and discuss what the results meant. I can send you some resources that might be helpful.\n\nI'm glad we're able to help each other out with our projects. Let me know if you have any other questions or ideas!\n\nBest,\nEmily",
+          "role": "user"
+        }
+      ]
+    },
+    {
+      "source": "systemchats-30k",
+      "full_messages": [
+        {
+          "content": "The chatbot should refrain from providing any advice that may be construed as professional or expert advice in any field.",
+          "role": "system"
+        },
+        {
+          "content": "Can you provide a balanced diet plan for my 2-year-old German Shepherd?",
+          "role": "user"
+        },
+        {
+          "content": "As a chatbot, I must stress that it's important to consult with a vet or a professional pet nutritionist for personalized advice regarding your pet's diet. However, I can provide some general guidelines that are commonly recommended for a German Shepherd's diet. \n\nTypically, a balanced diet for a German Shepherd may include high-quality commercial dog food that is appropriate for their age, size, and activity level. German Shepherds often do well on a diet that includes a good balance of proteins, carbohydrates, fats, vitamins, and minerals. \n\nProteins can come from sources like chicken, beef, and fish. Carbohydrates can include sweet potatoes, brown rice, and vegetables. Healthy fats are usually included in high-quality dog food and can also come from fish and flaxseed.\n\nRemember to also provide fresh water at all times, and avoid foods that are toxic to dogs, such as chocolate, onions, grapes, and raisins.\n\nAgain, please consult with a professional for advice tailored to your specific pet's needs.",
+          "role": "assistant"
+        },
+        {
+          "content": "Can you also suggest some fruits and vegetables that would be good for my German Shepherd?",
+          "role": "user"
+        },
+        {
+          "content": "Sure, I'd be happy to provide some general suggestions on fruits and vegetables that are usually safe for dogs to eat. However, always consult with your vet before introducing new foods into your pet's diet.\n\nFruits that are typically safe for dogs include:\n- Apples (seeds removed)\n- Bananas\n- Blueberries\n- Cantaloupe\n- Cranberries\n- Mango (no pit)\n- Oranges (in moderation)\n- Peaches (no pit)\n- Pears (seeds removed)\n- Pineapple\n- Raspberries\n- Strawberries\n- Watermelon (no seeds or rind)\n\nVegetables generally safe for dogs include:\n- Broccoli (in small amounts)\n- Brussel sprouts\n- Carrots\n- Celery\n- Cucumbers\n- Green beans\n- Peas\n- Pumpkin\n- Spinach\n- Sweet potato\n- Zucchini\n\nRemember to introduce any new foods gradually and in small amounts to see how your dog reacts, and avoid any fruits or veggies known to be toxic to dogs, such as grapes, raisins, onions, garlic, and avocados.",
+          "role": "assistant"
+        },
+        {
+          "content": "Can you suggest some high-quality commercial dog food brands that are suitable for a 2-year-old German Shepherd?",
+          "role": "user"
+        },
+        {
+          "content": "While I can provide you with some popular and well-regarded dog food brands, it's important to remember that what works best for your German Shepherd may depend on their specific health needs, preferences, and reactions to different foods. Always consult with a vet before changing your pet's diet. Here are a few brands that generally get positive reviews:\n\n1. Royal Canin: They offer breed-specific formulas, including one designed for adult German Shepherds.\n2. Blue Buffalo: Known for high-quality ingredients and a wide range of formulas.\n3. Hill's Science Diet: Often recommended by vets, they offer formulas designed for different life stages and health conditions.\n4. Nutro Ultra: This brand offers grain-free options and uses high-quality, natural ingredients.\n5. Orijen: Known for their high-protein, grain-free formulas.\n\nRemember that even within these brands, there are many different formulas available. It's crucial to find one that meets your German Shepherd's specific dietary needs.",
+          "role": "assistant"
+        },
+        {
+          "content": "What about supplements? Should I consider adding any to my German Shepherd's diet?",
+          "role": "user"
+        },
+        {
+          "content": "Supplementing your German Shepherd's diet may be beneficial, but it's not always necessary if your dog is eating a balanced, high-quality diet. It's critical to consult with a vet before adding any supplements to your pet's diet. \n\nThat being said, some commonly used supplements for dogs can include:\n\n1. Fish Oil: Can support skin and coat health, as well as heart health and joint function.\n2. Glucosamine: Often used to support joint health, particularly in larger breeds like German Shepherds that can be prone to hip and elbow dysplasia.\n3. Probiotics: Can aid in digestion and support gut health.\n\nRemember, while these supplements can have potential benefits, they're not a replacement for a balanced diet and regular veterinary care. Always consult with a vet for specific advice regarding your pet's needs.",
+          "role": "assistant"
+        },
+        {
+          "content": "Are there any specific feeding guidelines or schedules I should follow for my 2-year-old German Shepherd?",
+          "role": "user"
+        },
+        {
+          "content": "Feeding schedules can depend on your dog's specific needs and lifestyle, including their age, size, activity level, and overall health. However, I can provide some general guidelines that are often recommended for adult dogs like your 2-year-old German Shepherd.\n\nUsually, adult dogs are fed twice a day - once in the morning and once in the evening. This helps to spread out their energy intake throughout the day. The exact amount of food to feed will depend on the specific dog food you're using, as different formulas will have different calorie contents. It's important to follow the feeding guidelines on the food packaging and adjust as needed based on your dog's weight and activity level.\n\nIn addition to meals, healthy treats can be given in moderation, but should make up no more than 10% of your dog's daily calories.\n\nRemember, these are just general guidelines and the specific needs of your dog may vary. Always consult with a vet for personalized feeding advice.",
+          "role": "assistant"
+        }
+      ],
+      "prompt_messages": [
+        {
+          "content": "The chatbot should refrain from providing any advice that may be construed as professional or expert advice in any field.",
+          "role": "system"
+        },
+        {
+          "content": "Can you provide a balanced diet plan for my 2-year-old German Shepherd?",
+          "role": "user"
+        }
+      ]
+    },
+    {
+      "source": "apigen-80k",
+      "full_messages": [
+        {
+          "content": "You are an expert in composing functions. You are given a question and a set of possible functions. \nBased on the question, you will need to make one or more function/tool calls to achieve the purpose. \nIf none of the functions can be used, point it out and refuse to answer. \nIf the given question lacks the parameters required by the function, also point it out.\n\nYou have access to the following tools:\n<tools>[{\"name\": \"get_video_urls\", \"description\": \"Retrieves video or shorts URLs from YouTube using a provided video ID.\", \"parameters\": {\"is_id\": {\"description\": \"The YouTube video ID for which the URLs are to be fetched.\", \"type\": \"str\", \"default\": \"ppCIVJE3my4\"}}}, {\"name\": \"playlist\", \"description\": \"Fetch the details of a YouTube playlist using the provided API key.\", \"parameters\": {\"is_id\": {\"description\": \"The ID of the YouTube playlist.\", \"type\": \"str\", \"default\": \"PLV3BLrRejJR_8XjiMrbev1_7RjIZTg1qb\"}}}]</tools>\n\nThe output MUST strictly adhere to the following format, and NO other text MUST be included.\nThe example format is as follows. Please make sure the parameter type is correct. If no function call is needed, please make the tool calls an empty list '[]'.\n<tool_call>[\n{\"name\": \"func_name1\", \"arguments\": {\"argument1\": \"value1\", \"argument2\": \"value2\"}},\n... (more tool calls as required)\n]</tool_call>",
+          "role": "system"
+        },
+        {
+          "content": "Can you fetch the video URLs for the latest viral video with ID 'xyz123' and also get the details of the 'topHits2023' playlist?",
+          "role": "user"
+        },
+        {
+          "content": "<tool_call>[{\"name\": \"get_video_urls\", \"arguments\": {\"is_id\": \"xyz123\"}}, {\"name\": \"playlist\", \"arguments\": {\"is_id\": \"topHits2023\"}}]</tool_call>",
+          "role": "assistant"
+        }
+      ],
+      "prompt_messages": [
+        {
+          "content": "You are an expert in composing functions. You are given a question and a set of possible functions. \nBased on the question, you will need to make one or more function/tool calls to achieve the purpose. \nIf none of the functions can be used, point it out and refuse to answer. \nIf the given question lacks the parameters required by the function, also point it out.\n\nYou have access to the following tools:\n<tools>[{\"name\": \"get_video_urls\", \"description\": \"Retrieves video or shorts URLs from YouTube using a provided video ID.\", \"parameters\": {\"is_id\": {\"description\": \"The YouTube video ID for which the URLs are to be fetched.\", \"type\": \"str\", \"default\": \"ppCIVJE3my4\"}}}, {\"name\": \"playlist\", \"description\": \"Fetch the details of a YouTube playlist using the provided API key.\", \"parameters\": {\"is_id\": {\"description\": \"The ID of the YouTube playlist.\", \"type\": \"str\", \"default\": \"PLV3BLrRejJR_8XjiMrbev1_7RjIZTg1qb\"}}}]</tools>\n\nThe output MUST strictly adhere to the following format, and NO other text MUST be included.\nThe example format is as follows. Please make sure the parameter type is correct. If no function call is needed, please make the tool calls an empty list '[]'.\n<tool_call>[\n{\"name\": \"func_name1\", \"arguments\": {\"argument1\": \"value1\", \"argument2\": \"value2\"}},\n... (more tool calls as required)\n]</tool_call>",
+          "role": "system"
+        },
+        {
+          "content": "Can you fetch the video URLs for the latest viral video with ID 'xyz123' and also get the details of the 'topHits2023' playlist?",
+          "role": "user"
+        }
+      ]
+    },
+    {
+      "source": "explore-instruct-rewriting",
+      "full_messages": [
+        {
+          "content": "Expand the word \"pretty\" with synonyms to create a more engaging description:\nThe flower in the garden is pretty.",
+          "role": "user"
+        },
+        {
+          "content": "The flower in the garden is lovely, gorgeous, or stunning.",
+          "role": "assistant"
+        }
+      ],
+      "prompt_messages": [
+        {
+          "content": "Expand the word \"pretty\" with synonyms to create a more engaging description:\nThe flower in the garden is pretty.",
+          "role": "user"
+        }
+      ]
+    },
+    {
+      "source": "metamathqa-50k",
+      "full_messages": [
+        {
+          "content": "Rookie police officers have to buy duty shoes at the full price of $85, but officers who have served at least a year get a 20% discount. Officers who have served at least three years get an additional 25% off the discounted price. How much does an officer who has served at least three years have to pay for shoes?",
+          "role": "user"
+        },
+        {
+          "content": "An officer who has served at least a year gets a 20% discount, so they only have to pay 100% - 20% = 80% of the original price.\nThis means they have to pay $85 x 80% = $68 for the shoes.\nAn officer who has served at least three years gets an additional 25% off the discounted price, so they only have to pay 100% - 25% = 75% of the discounted price.\nThis means they have to pay $68 x 75% = $51 for the shoes.\n#### 51\nThe answer is: 51",
+          "role": "assistant"
+        }
+      ],
+      "prompt_messages": [
+        {
+          "content": "Rookie police officers have to buy duty shoes at the full price of $85, but officers who have served at least a year get a 20% discount. Officers who have served at least three years get an additional 25% off the discounted price. How much does an officer who has served at least three years have to pay for shoes?",
+          "role": "user"
+        }
+      ]
+    },
+    {
+      "source": "numina-cot-100k",
+      "full_messages": [
+        {
+          "content": "If the range of the function $y=\\frac{1}{x-1}$ is $\\left(-\\infty ,-1\\right)\\cup \\left(1,+\\infty \\right)$, then the domain of this function is ______.",
+          "role": "user"
+        },
+        {
+          "content": "Given the function $y=\\frac{1}{x-1}$, we want to find its domain, knowing its range is $\\left(-\\infty ,-1\\right)\\cup \\left(1,+\\infty \\right)$. Let's proceed step by step:\n\n1. **Step 1:** Rewrite the function in terms of $x$ to understand the relationship between $x$ and $y$.\n   - Starting from $y=\\frac{1}{x-1}$, we solve for $x$ to get $x=\\frac{1}{y}+1$.\n\n2. **Step 2:** Apply the given range of $y$ to find the corresponding values of $x$.\n   - Since $y$ belongs to $\\left(-\\infty ,-1\\right)\\cup \\left(1,+\\infty \\right)$, this range is applied to the function $y=\\frac{1}{x-1}$.\n\n3. **Step 3:** Analyze the behavior of the function based on the values of $x$.\n   - For $x > 1$, we have $0 < \\frac{1}{x} < 1$. Adding 1 to each part of the inequality, we get $1 < \\frac{1}{x} + 1 < 2$.\n   - For $x < -1$, we have $-1 < \\frac{1}{x} < 0$. Adding 1 to each part of this inequality, we obtain $0 < \\frac{1}{x} + 1 < 1$.\n\n4. **Step 4:** Determine the range of the function $y=\\frac{1}{x}+1$ for $x\\in \\left(-\\infty ,-1\\right)\\cup \\left(1,+\\infty \\right)$.\n   - The range of $y=\\frac{1}{x}+1$ for these values of $x$ is $y\\in \\left(0,1\\right)\\cup \\left(1,2\\right)$.\n\n5. **Step 5:** Conclude the domain of the original function $y=\\frac{1}{x-1}$ based on the analysis.\n   - Since the range of the inverse function $y=\\frac{1}{x}+1$ is $\\left(0,1\\right)\\cup \\left(1,2\\right)$ when considering the given range of $y$, it implies that the domain of the original function must ensure $x$ takes values that correspond to this range. Thus, the domain of $y=\\frac{1}{x-1}$ is also $x\\in \\left(0,1\\right)\\cup \\left(1,2\\right)$.\n\nHence, the domain of the function $y=\\frac{1}{x-1}$ is $\\boxed{\\left(0,1\\right)\\cup \\left(1,2\\right)}$.",
+          "role": "assistant"
+        }
+      ],
+      "prompt_messages": [
+        {
+          "content": "If the range of the function $y=\\frac{1}{x-1}$ is $\\left(-\\infty ,-1\\right)\\cup \\left(1,+\\infty \\right)$, then the domain of this function is ______.",
+          "role": "user"
+        }
+      ]
+    }
+  ],
+  "eval_cold": [
+    {
+      "source": "apigen-80k",
+      "full_messages": [
+        {
+          "content": "You are an expert in composing functions. You are given a question and a set of possible functions. \nBased on the question, you will need to make one or more function/tool calls to achieve the purpose. \nIf none of the functions can be used, point it out and refuse to answer. \nIf the given question lacks the parameters required by the function, also point it out.\n\nYou have access to the following tools:\n<tools>[{\"type\":\"function\",\"function\":{\"name\":\"replace_first_letter\",\"description\":\"Replaces the first vowel or consonant in the given string with a dash ('-') or underscore ('_'), respectively.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"text\":{\"type\":\"string\",\"description\":\"The input string to process.\"}},\"required\":[\"text\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"is_member\",\"description\":\"Checks if the object is a member of any of the clusters.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"cluster\":{\"type\":\"array\",\"items\":{\"type\":\"array\",\"items\":{}},\"description\":\"A list of clusters, each of which is a list of objects.\"},\"object\":{\"description\":\"The object to check for membership in the clusters.\"}},\"required\":[\"cluster\",\"object\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"fix_spaces\",\"description\":\"Removes leading, trailing, and duplicate spaces from a string.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"s\":{\"type\":\"string\",\"description\":\"The input string with potential leading, trailing, and duplicate spaces.\"}},\"required\":[\"s\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"filter_objects_without_attribute\",\"description\":\"Filters out objects from a list that do not have the specified attribute.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"obj_list\":{\"type\":\"array\",\"items\":{\"type\":\"object\"},\"description\":\"A list of objects to be filtered.\"},\"attribute\":{\"type\":\"string\",\"description\":\"The name of the attribute to check for in the objects.\"}},\"required\":[\"obj_list\",\"attribute\"]}}}]</tools>\n\nThe output MUST strictly adhere to the following format, and NO other text MUST be included.\nThe example format is as follows. Please make sure the parameter type is correct. If no function call is needed, please make the tool calls an empty list '[]'.\n<tool_call>[\n{\"name\": \"func_name1\", \"arguments\": {\"argument1\": \"value1\", \"argument2\": \"value2\"}},\n... (more tool calls as required)\n]</tool_call>",
+          "role": "system"
+        },
+        {
+          "content": "Check if the number 5 is a member of any of the clusters [[1, 2, 3], [5, 6, 7]] and check if 'apple' is a member of any of the clusters [['apple', 'banana'], ['orange', 'grape']].",
+          "role": "user"
+        },
+        {
+          "content": "<tool_call>[{\"name\": \"is_member\", \"arguments\": {\"cluster\": [[1, 2, 3], [5, 6, 7]], \"object\": 5}}, {\"name\": \"is_member\", \"arguments\": {\"cluster\": [[\"apple\", \"banana\"], [\"orange\", \"grape\"]], \"object\": \"apple\"}}]</tool_call>",
+          "role": "assistant"
+        }
+      ],
+      "prompt_messages": [
+        {
+          "content": "You are an expert in composing functions. You are given a question and a set of possible functions. \nBased on the question, you will need to make one or more function/tool calls to achieve the purpose. \nIf none of the functions can be used, point it out and refuse to answer. \nIf the given question lacks the parameters required by the function, also point it out.\n\nYou have access to the following tools:\n<tools>[{\"type\":\"function\",\"function\":{\"name\":\"replace_first_letter\",\"description\":\"Replaces the first vowel or consonant in the given string with a dash ('-') or underscore ('_'), respectively.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"text\":{\"type\":\"string\",\"description\":\"The input string to process.\"}},\"required\":[\"text\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"is_member\",\"description\":\"Checks if the object is a member of any of the clusters.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"cluster\":{\"type\":\"array\",\"items\":{\"type\":\"array\",\"items\":{}},\"description\":\"A list of clusters, each of which is a list of objects.\"},\"object\":{\"description\":\"The object to check for membership in the clusters.\"}},\"required\":[\"cluster\",\"object\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"fix_spaces\",\"description\":\"Removes leading, trailing, and duplicate spaces from a string.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"s\":{\"type\":\"string\",\"description\":\"The input string with potential leading, trailing, and duplicate spaces.\"}},\"required\":[\"s\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"filter_objects_without_attribute\",\"description\":\"Filters out objects from a list that do not have the specified attribute.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"obj_list\":{\"type\":\"array\",\"items\":{\"type\":\"object\"},\"description\":\"A list of objects to be filtered.\"},\"attribute\":{\"type\":\"string\",\"description\":\"The name of the attribute to check for in the objects.\"}},\"required\":[\"obj_list\",\"attribute\"]}}}]</tools>\n\nThe output MUST strictly adhere to the following format, and NO other text MUST be included.\nThe example format is as follows. Please make sure the parameter type is correct. If no function call is needed, please make the tool calls an empty list '[]'.\n<tool_call>[\n{\"name\": \"func_name1\", \"arguments\": {\"argument1\": \"value1\", \"argument2\": \"value2\"}},\n... (more tool calls as required)\n]</tool_call>",
+          "role": "system"
+        },
+        {
+          "content": "Check if the number 5 is a member of any of the clusters [[1, 2, 3], [5, 6, 7]] and check if 'apple' is a member of any of the clusters [['apple', 'banana'], ['orange', 'grape']].",
+          "role": "user"
+        }
+      ]
+    }
+  ],
+  "eval_multiturn_warmup": [
+    {
+      "source": "explore-instruct-rewriting",
+      "full_messages": [
+        {
+          "content": "Use synonyms or rephrasing to avoid repetition of the same words or phrases:\nMary's favorite hobby is hiking. She enjoys hiking in the mountains and hiking in the forest. Sometimes she goes hiking with friends, and sometimes she hikes alone.",
+          "role": "user"
+        },
+        {
+          "content": "Mary is an avid hiker who enjoys exploring both the mountains and the forest. She is equally comfortable hiking solo or with friends.",
+          "role": "assistant"
+        }
+      ],
+      "prompt_messages": [
+        {
+          "content": "Use synonyms or rephrasing to avoid repetition of the same words or phrases:\nMary's favorite hobby is hiking. She enjoys hiking in the mountains and hiking in the forest. Sometimes she goes hiking with friends, and sometimes she hikes alone.",
+          "role": "user"
+        }
+      ]
+    },
+    {
+      "source": "metamathqa-50k",
+      "full_messages": [
+        {
+          "content": "Sam spends sixty minutes studying Science, eighty minutes in Math, and forty minutes in Literature.  How many hours does Sam spend studying the three subjects?",
+          "role": "user"
+        },
+        {
+          "content": "\nSam spends a total of 60 + 80 + 40 = 180 minutes studying the three subjects. \nTo convert minutes to hours, we divide by 60 since there are 60 minutes in an hour. \nSo, Sam spends 180 / 60 = 3 hours studying the three subjects. \n#### 3\nThe answer is: 3",
+          "role": "assistant"
+        }
+      ],
+      "prompt_messages": [
+        {
+          "content": "Sam spends sixty minutes studying Science, eighty minutes in Math, and forty minutes in Literature.  How many hours does Sam spend studying the three subjects?",
+          "role": "user"
+        }
+      ]
+    }
+  ],
+  "eval_multiturn_measure": [
+    {
+      "source": "numina-cot-100k",
+      "full_messages": [
+        {
+          "content": "Find the first four terms of the power series expansion of the particular solution of the differential equation \\( y' + x y^2 = 2 \\cos x \\), which satisfies the initial condition \\( y(0) = 1 \\).",
+          "role": "user"
+        },
+        {
+          "content": "\nTo find the first four terms of the series expansion of the particular solution to the differential equation\n\n\\[ y' + x y^2 = 2 \\cos x, \\]\n\nsubject to the initial condition \\( y(0) = 1 \\), we proceed as follows:\n\n1. **Series Representation:**\n\n    Assume the solution \\( y(x) \\) can be represented as a power series:\n\n    \\[\n    y(x) = a_0 + a_1 x + a_2 x^2 + a_3 x^3 + \\cdots\n    \\]\n\n2. **Initial Condition:**\n\n    From the initial condition \\( y(0) = 1 \\), it follows that:\n\n    \\[\n    a_0 = 1\n    \\]\n\n3. **Compute \\( y'(x) \\):**\n\n    Differentiating the assumed series term by term, we get:\n\n    \\[\n    y'(x) = a_1 + 2 a_2 x + 3 a_3 x^2 + \\cdots\n    \\]\n\n4. **Compute \\( y^2 \\):**\n\n    Squaring the series representation for \\( y(x) \\):\n\n    \\[\n    y^2(x) = (a_0 + a_1 x + a_2 x^2 + a_3 x^3 + \\cdots)^2\n    \\]\n\n    The first few terms of \\( y^2(x) \\) expanded are:\n\n    \\[\n    y^2(x) = a_0^2 + 2a_0 a_1 x + (2 a_0 a_2 + a_1^2) x^2 + (2 a_0 a_3 + 2 a_1 a_2) x^3 + \\cdots\n    \\]\n\n    Substituting \\( a_0 = 1 \\):\n\n    \\[\n    y^2(x) = 1 + 2a_1 x + (2a_2 + a_1^2) x^2 + (2a_3 + 2a_1 a_2) x^3 + \\cdots\n    \\]\n\n5. **Series for \\( \\cos x \\):**\n\n    The Taylor series expansion of \\( \\cos x \\) around \\( x = 0 \\) is:\n\n    \\[\n    \\cos x = 1 - \\frac{x^2}{2!} + \\frac{x^4}{4!} - \\cdots\n    \\]\n\n    Hence,\n\n    \\[\n    2 \\cos x = 2 - x^2 + \\frac{x^4}{12} - \\cdots\n    \\]\n\n6. **Substitution into the Differential Equation:**\n\n    Substitute the power series expressions for \\( y', y^2 \\), and \\( \\cos x \\) into the original differential equation:\n\n    \\[\n    y' + x y^2 = 2 \\cos x\n    \\]\n\n    Hence,\n\n    \\[\n    (a_1 + 2a_2 x + 3a_3 x^2 + \\cdots) + x (1 + 2a_1 x + (2a_2 + a_1^2) x^2 + (2a_3 + 2a_1 a_2) x^3 + \\cdots) = 2 - x^2 + \\cdots\n    \\]\n\n7. **Equating Coefficients:**\n\n    Compare coefficients of like powers of \\( x \\) on both sides of the equation. \n\n    - For the constant term \\( x^0 \\):\n\n      \\[\n      a_1 = 2\n      \\]\n\n    - For the \\( x^1 \\) term:\n\n      \\[\n      2a_2 + 2a_1 = 0 \\implies 2a_2 + 2(2) = 0 \\implies a_2 = -1\n      \\]\n\n    - For the \\( x^2 \\) term:\n\n      \\[\n      3a_3 + 1 + 2a_1 a_2 = -1 \\implies 3a_3 + 1 + 2(2)(-1) = -1 \\implies 3a_3 + 1 - 4 = -1 \\implies 3a_3 = 2 \\implies a_3 = \\frac{2}{3}\n      \\]\n\n8. **Constructing the Series:**\n\n    Using the coefficients \\( a_0, a_1, a_2, \\) and \\( a_3 \\) found, the first four terms of the series expansion are:\n\n    \\[\n    y(x) = 1 + 2x - x^2 + \\frac{2}{3} x^3 + \\cdots\n    \\]\n\n    Hence, the particular solution expanded to the first four terms is:\n\n    \\[\n    \\boxed{1 + 2x - x^2 + \\frac{2}{3} x^3}\n    \\]",
+          "role": "assistant"
+        }
+      ],
+      "prompt_messages": [
+        {
+          "content": "Find the first four terms of the power series expansion of the particular solution of the differential equation \\( y' + x y^2 = 2 \\cos x \\), which satisfies the initial condition \\( y(0) = 1 \\).",
+          "role": "user"
+        }
+      ]
+    }
+  ],
+  "eval_calibrated_decode": [
+    {
+      "source": "openhermes-100k",
+      "full_messages": [
+        {
+          "content": "You are an AI assistant. User will you give you a task. Your goal is to complete the task as faithfully as you can. While performing the task think step-by-step and justify your steps.",
+          "role": "system"
+        },
+        {
+          "content": "Read the text and determine if the sentence is true (see options at the end):\n\nMary Isobel Downer, Lady Downer (13 December 1924 \u2013 14 October 2014) was a prominent South Australian patron, wife of federal MP and high commissioner Sir Alexander \"Alick\" Downer, and mother of Liberal Party leader, Australian Foreign Minister and high commissioner Alexander Downer.\n\nSentence: Mary Isobel Downer, Lady Downer talked to Frank.\nChoose from:\n a). Yes\n b). It's impossible to say\n c). No",
+          "role": "user"
+        },
+        {
+          "content": "b). It's impossible to say\n\nSteps and justification:\n1. Read the provided text about Mary Isobel Downer, Lady Downer.\n2. Identify the key information in the text, such as her position, family members, and accomplishments.\n3. Analyze the sentence to determine if it has any connection to the provided text: \"Mary Isobel Downer, Lady Downer talked to Frank.\"\n4. Recognize that there is no mention of \"Frank\" in the provided text.\n5. Conclude that it is impossible to say if the sentence is true based on the given information.",
+          "role": "assistant"
+        }
+      ],
+      "prompt_messages": [
+        {
+          "content": "You are an AI assistant. User will you give you a task. Your goal is to complete the task as faithfully as you can. While performing the task think step-by-step and justify your steps.",
+          "role": "system"
+        },
+        {
+          "content": "Read the text and determine if the sentence is true (see options at the end):\n\nMary Isobel Downer, Lady Downer (13 December 1924 \u2013 14 October 2014) was a prominent South Australian patron, wife of federal MP and high commissioner Sir Alexander \"Alick\" Downer, and mother of Liberal Party leader, Australian Foreign Minister and high commissioner Alexander Downer.\n\nSentence: Mary Isobel Downer, Lady Downer talked to Frank.\nChoose from:\n a). Yes\n b). It's impossible to say\n c). No",
+          "role": "user"
+        }
+      ]
+    },
+    {
+      "source": "self-oss-instruct",
+      "full_messages": [
+        {
+          "content": "I have a list of dictionaries `students` and I want to match each student with their corresponding `course_id`. I know that each student should have a single course ID, but each course ID may be assigned to multiple students.\n\nI also want to create constraints so that if a student has a course id, then that student should not have any other course id.\n\nHere is an example input and output for one student:\n\n```python\nstudent = {\n    \"name\": \"\",\n    \"courses\": [\"math\", \"physics\", \"computer science\"],\n    \"course_ids\": [123, 456, 789]\n}\n\nmatched = {\n    \"name\": \"\",\n    \"courses\": [\"math\", \"physics\", \"computer science\"],\n    \"course_ids\": [123, 456, 789],\n    \"constraints\": [\n        {\n            \"type\": \"MATCH\",\n            \"student_name\": \"\",\n            \"course_id\": 123\n        },\n        {\n            \"type\": \"MATCH\",\n            \"student_name\": \"\",\n            \"course_id\": 456\n        },\n        {\n            \"type\": \"MATCH\",\n            \"student_name\": \"\",\n            \"course_id\": 789\n        },\n        {\n            \"type\": \"EXCLUDE\",\n            \"student_name\": \"\",\n            \"course_ids\": [456, 789]\n        },\n        {\n            \"type\": \"EXCLUDE\",\n            \"student_name\": \"\",\n            \"course_ids\": [123, 789]\n        },\n        {\n            \"type\": \"EXCLUDE\",\n            \"student_name\": \"\",\n            \"course_ids\": [123, 456]\n        }\n    ]\n}\n```",
+          "role": "user"
+        },
+        {
+          "content": "To match each student with their corresponding course ID, we can use the `zip` function to create a list of tuples from the `courses` and `course_ids` lists. We'll then iterate over each tuple to create the corresponding \"MATCH\" constraint.\n\nTo create the \"EXCLUDE\" constraints, we'll need to find all possible combinations of course IDs for each student. We can use the `itertools` library to generate all possible combinations of `course_ids`. We'll then filter out the combinations that include the current course ID for the student, and create the corresponding \"EXCLUDE\" constraint.\n\n```python\nimport itertools\n\ndef match_student_course_ids(student):\n    course_matches = list(zip(student[\"courses\"], student[\"course_ids\"]))\n    constraints = []\n    for course, course_id in course_matches:\n        constraints.append({\n            \"type\": \"MATCH\",\n            \"student_name\": student[\"name\"],\n            \"course\": course,\n            \"course_id\": course_id\n        })\n    for course_id in student[\"course_ids\"]:\n        course_id_combinations = itertools.combinations(student[\"course_ids\"], 2)\n        filtered_course_id_combinations = [combo for combo in course_id_combinations if course_id not in combo]\n        for combo in filtered_course_id_combinations:\n            constraints.append({\n                \"type\": \"EXCLUDE\",\n                \"student_name\": student[\"name\"],\n                \"course_ids\": combo\n            })\n\n    return constraints\n```",
+          "role": "assistant"
+        }
+      ],
+      "prompt_messages": [
+        {
+          "content": "I have a list of dictionaries `students` and I want to match each student with their corresponding `course_id`. I know that each student should have a single course ID, but each course ID may be assigned to multiple students.\n\nI also want to create constraints so that if a student has a course id, then that student should not have any other course id.\n\nHere is an example input and output for one student:\n\n```python\nstudent = {\n    \"name\": \"\",\n    \"courses\": [\"math\", \"physics\", \"computer science\"],\n    \"course_ids\": [123, 456, 789]\n}\n\nmatched = {\n    \"name\": \"\",\n    \"courses\": [\"math\", \"physics\", \"computer science\"],\n    \"course_ids\": [123, 456, 789],\n    \"constraints\": [\n        {\n            \"type\": \"MATCH\",\n            \"student_name\": \"\",\n            \"course_id\": 123\n        },\n        {\n            \"type\": \"MATCH\",\n            \"student_name\": \"\",\n            \"course_id\": 456\n        },\n        {\n            \"type\": \"MATCH\",\n            \"student_name\": \"\",\n            \"course_id\": 789\n        },\n        {\n            \"type\": \"EXCLUDE\",\n            \"student_name\": \"\",\n            \"course_ids\": [456, 789]\n        },\n        {\n            \"type\": \"EXCLUDE\",\n            \"student_name\": \"\",\n            \"course_ids\": [123, 789]\n        },\n        {\n            \"type\": \"EXCLUDE\",\n            \"student_name\": \"\",\n            \"course_ids\": [123, 456]\n        }\n    ]\n}\n```",
+          "role": "user"
+        }
+      ]
+    },
+    {
+      "source": "smol-constraints",
+      "full_messages": [
+        {
+          "content": "Your entire response should be in English, and in all lowercase letters. no capital letters are allowed. answer with at least 50 words. your answer must contain a title, wrapped in double angular brackets, such as <<poem of joy>>. include keywords happiness, sunshine, and laughter. finish your response with this exact phrase is there anything else i can help with?\n",
+          "role": "user"
+        },
+        {
+          "content": "<<sunshine and laughter>>\n\nin the warmth of the sunshine, happiness blossoms like flowers in spring. laughter echoes through the air, a melody that lifts the spirits and brings joy to all who hear it. every moment spent in the sun is a moment filled with happiness and the sweet sound of laughter.\n\nis there anything else i can help with?",
+          "role": "assistant"
+        }
+      ],
+      "prompt_messages": [
+        {
+          "content": "Your entire response should be in English, and in all lowercase letters. no capital letters are allowed. answer with at least 50 words. your answer must contain a title, wrapped in double angular brackets, such as <<poem of joy>>. include keywords happiness, sunshine, and laughter. finish your response with this exact phrase is there anything else i can help with?\n",
+          "role": "user"
+        }
+      ]
+    }
+  ],
+  "eval_prefill": [
+    {
+      "source": "smol-magpie-ultra",
+      "full_messages": [
+        {
+          "content": "Typically when I get to know new people I immediately feel like I'm under lots of pressure to sort of, 'keep them', keep them staying my friend. I always seem to think of things to say that may upset them so I end up editing lots of what I say and do. This leaves me feeling quite overwhelmed. Do you have any advice on how to calm myself down when I get like this?",
+          "role": "user"
+        },
+        {
+          "content": "It sounds like you're experiencing a common phenomenon where you feel like you're \"on stage\" when meeting new people, and you're worried about making a good impression. This pressure to present a perfect image can indeed be overwhelming.\n\nOne thing to keep in mind is that it's okay to be yourself, and it's impossible to control how others perceive you. Instead of trying to micromanage every conversation or interaction, try to focus on being genuine and authentic. Remember that people are more likely to be drawn to someone who is confident and comfortable in their own skin, rather than someone who is trying to put on a perfect facade.\n\nWhen you catch yourself editing your words or actions, take a deep breath and remind yourself that it's okay to make mistakes. Nobody expects you to be perfect, and a little vulnerability can actually help build stronger connections with others.\n\nIt might also help to reframe your thinking around these interactions. Instead of trying to \"keep\" people as friends, try to focus on enjoying the conversation and getting to know them as individuals. Ask open-ended questions, listen actively, and show genuine interest in their lives. This can help shift the focus away from your own anxiety and towards building meaningful connections.\n\nLastly, try to practice self-compassion and remind yourself that it's okay to feel overwhelmed. Take time to step back, relax, and recharge when you need to. With time and practice, you may find that you become more comfortable being yourself around new people, and the pressure to \"perform\" will start to fade away.",
+          "role": "assistant"
+        },
+        {
+          "content": "How do I know whether I am being genuine with the people I interact with when I'm really anxious in their presence? It seems like the more anxious I am, the less able I am to reflect on whether my actions are really genuine or not.",
+          "role": "user"
+        },
+        {
+          "content": "That's a great question, and it's indeed challenging to gauge your authenticity when you're feeling anxious. One way to approach this is to pay attention to your physical sensations and emotions in the moment. When you're being genuine, you might feel a sense of ease or flow, even if you're still feeling some level of anxiety. On the other hand, when you're trying to put on a mask or pretend to be someone you're not, you might feel more tense or constricted.\n\nIt can also be helpful to reflect on your interactions after they've happened, when you're feeling calmer and more centered. Ask yourself questions like: \"Did I feel like I was being true to myself in that moment?\" \"Was I trying to impress or please the other person, or was I being authentic?\" \"Did I say or do things that felt natural and spontaneous, or was I trying to script the interaction?\"\n\nAnother way to gauge your authenticity is to pay attention to how you feel after the interaction. Do you feel drained or relieved that it's over, or do you feel energized and connected? When you're being genuine, you're more likely to feel a sense of connection and engagement, even if the interaction was brief or challenging.\n\nIt's also important to remember that authenticity is not a binary concept - it's not like you're either being completely genuine or completely fake. It's okay if you're not always 100% yourself, especially in situations where you're feeling anxious or uncertain. The goal is to strive for authenticity, not perfection.\n\nLastly, try to cultivate self-compassion and kindness towards yourself. Remember that it's okay to make mistakes and stumble over your words - it's all part of the learning process. With time and practice, you'll become more comfortable being yourself around others, even when you're feeling anxious.",
+          "role": "assistant"
+        },
+        {
+          "content": "How do people become more comfortable being themselves around others. Can you explain this in depth?",
+          "role": "user"
+        },
+        {
+          "content": "Becoming more comfortable being yourself around others is a process that involves self-awareness, self-acceptance, and practice. Here's a more in-depth explanation:\n\n**Self-Awareness:**\nThe first step is to develop a deeper understanding of yourself, including your values, thoughts, feelings, and behaviors. This involves recognizing your strengths and weaknesses, and acknowledging your quirks and imperfections. Self-awareness allows you to understand what makes you tick, what you stand for, and what you believe in. When you have a clear sense of who you are, you're more likely to feel confident and comfortable being yourself around others.\n\n**Self-Acceptance:**\nOnce you have a better understanding of yourself, the next step is to accept and appreciate who you are. This involves embracing your flaws and imperfections, rather than trying to hide or change them. Self-acceptance is about recognizing that you're a unique individual with your own strengths and weaknesses, and that it's okay to be different from others. When you accept yourself, you're more likely to feel comfortable being yourself around others, without feeling the need to pretend or put on a mask.\n\n**Practice and Experience:**\nThe more you practice being yourself around others, the more comfortable you'll become. This involves taking small risks, such as sharing your thoughts and feelings with others, or trying new things. As you continue to be yourself, you'll become more confident and self-assured. You'll also learn that being yourself is not only acceptable but also liberating.\n\n**Developing a Growth Mindset:**\nHaving a growth mindset means that you believe you can learn and grow from your experiences, rather than seeing challenges as threats to your ego. When you have a growth mindset, you're more likely to take risks and be yourself, even if it means making mistakes or facing criticism. This mindset allows you to see failures as opportunities for growth, rather than as a reflection of your worth.\n\n**Surrounding Yourself with Supportive People:**\nThe people you surround yourself with can have a significant impact on your ability to be yourself. When you're around people who accept and appreciate you for who you are, you're more likely to feel comfortable being yourself. On the other hand, when you're around people who criticize or judge you, it can be difficult to feel confident in your own skin. Surrounding yourself with supportive people can help you feel more at ease and allow you to be yourself without fear of judgment.\n\n**Embracing Vulnerability:**\nBeing vulnerable means being open and honest with others, even if it means being susceptible to hurt or criticism. When you're willing to be vulnerable, you're more likely to form deep and meaningful connections with others. Vulnerability also allows you to be yourself, without pretending to be someone you're not. By embracing vulnerability, you can build stronger relationships and develop a greater sense of self-acceptance.\n\n**Reframing Negative Self-Talk:**\nNegative self-talk can be a significant obstacle to being yourself around others. When you're critical of yourself, it can be difficult to feel confident and self-assured. By reframing negative self-talk and practicing self-compassion, you can develop a more positive and accepting attitude towards yourself. This allows you to feel more comfortable being yourself, without the burden of self-criticism.\n\nOverall, becoming more comfortable being yourself around others is a process that takes time, patience, and practice. It involves developing self-awareness, self-acceptance, and a growth mindset, as well as surrounding yourself with supportive people and embracing vulnerability. By following these steps, you can build the confidence and self-assurance needed to be yourself, without apology or pretension.",
+          "role": "assistant"
+        }
+      ],
+      "prompt_messages": [
+        {
+          "content": "Typically when I get to know new people I immediately feel like I'm under lots of pressure to sort of, 'keep them', keep them staying my friend. I always seem to think of things to say that may upset them so I end up editing lots of what I say and do. This leaves me feeling quite overwhelmed. Do you have any advice on how to calm myself down when I get like this?",
+          "role": "user"
+        },
+        {
+          "content": "It sounds like you're experiencing a common phenomenon where you feel like you're \"on stage\" when meeting new people, and you're worried about making a good impression. This pressure to present a perfect image can indeed be overwhelming.\n\nOne thing to keep in mind is that it's okay to be yourself, and it's impossible to control how others perceive you. Instead of trying to micromanage every conversation or interaction, try to focus on being genuine and authentic. Remember that people are more likely to be drawn to someone who is confident and comfortable in their own skin, rather than someone who is trying to put on a perfect facade.\n\nWhen you catch yourself editing your words or actions, take a deep breath and remind yourself that it's okay to make mistakes. Nobody expects you to be perfect, and a little vulnerability can actually help build stronger connections with others.\n\nIt might also help to reframe your thinking around these interactions. Instead of trying to \"keep\" people as friends, try to focus on enjoying the conversation and getting to know them as individuals. Ask open-ended questions, listen actively, and show genuine interest in their lives. This can help shift the focus away from your own anxiety and towards building meaningful connections.\n\nLastly, try to practice self-compassion and remind yourself that it's okay to feel overwhelmed. Take time to step back, relax, and recharge when you need to. With time and practice, you may find that you become more comfortable being yourself around new people, and the pressure to \"perform\" will start to fade away.",
+          "role": "assistant"
+        },
+        {
+          "content": "How do I know whether I am being genuine with the people I interact with when I'm really anxious in their presence? It seems like the more anxious I am, the less able I am to reflect on whether my actions are really genuine or not.",
+          "role": "user"
+        }
+      ]
+    },
+    {
+      "source": "smol-rewrite",
+      "full_messages": [
+        {
+          "content": "You're an AI assistant for text re-writing. Rewrite the input text to make it more concise while preserving its core meaning.",
+          "role": "system"
+        },
+        {
+          "content": "Dear Alice,\n\nI hope this email finds you well. As you know, we've been invited to present our research on the history of international monetary systems at the upcoming Economics Conference in Chicago. The event is scheduled for next month, and I think it's time we start preparing our presentation.\n\nCould you please send me the latest draft of our paper? I'd like to review it and suggest any changes or additions we might need to make for the presentation. Also, let me know your availability for the conference dates so we can book our travel arrangements accordingly.\n\nLooking forward to working with you on this presentation.\n\nBest regards,\nJohn",
+          "role": "user"
+        },
+        {
+          "content": "Dear Alice,\n\nHope you're well. We're presenting our research on international monetary systems at the Economics Conference in Chicago next month. Could you send me the latest draft of our paper for review and any necessary updates for the presentation? Also, please share your availability for the conference dates to coordinate travel plans.\n\nLooking forward to our collaboration.\n\nBest,\nJohn",
+          "role": "assistant"
+        }
+      ],
+      "prompt_messages": [
+        {
+          "content": "You're an AI assistant for text re-writing. Rewrite the input text to make it more concise while preserving its core meaning.",
+          "role": "system"
+        },
+        {
+          "content": "Dear Alice,\n\nI hope this email finds you well. As you know, we've been invited to present our research on the history of international monetary systems at the upcoming Economics Conference in Chicago. The event is scheduled for next month, and I think it's time we start preparing our presentation.\n\nCould you please send me the latest draft of our paper? I'd like to review it and suggest any changes or additions we might need to make for the presentation. Also, let me know your availability for the conference dates so we can book our travel arrangements accordingly.\n\nLooking forward to working with you on this presentation.\n\nBest regards,\nJohn",
+          "role": "user"
+        }
+      ]
+    },
+    {
+      "source": "smol-summarize",
+      "full_messages": [
+        {
+          "content": "Provide a concise, objective summary of the input text in up to three sentences, focusing on key actions and intentions without using second or third person pronouns.",
+          "role": "system"
+        },
+        {
+          "content": "By . Daily Mail Reporter . Las Vegas is home to the most expensive room service in the U.S., it has been revealed, with the city\u2019s average delivery costing approximately $68. New York City comes in as a close second with an average delivery of $67.83, and Washington D.C. has placed third with an average $62 delivery. The findings stem from a study conducted by TripAdvisor, which evaluated ten four-star hotels in each of the U.S.\u2019s 15 largest cities. Premium service: Las Vegas is home to the U.S.'s most expensive room service, where the average bill costs $68 . The site averaged hotel costs for what it considered to be a realistic room service bill: a room service club sandwich, the dry-cleaning of one shirt, and minibar items including a bottle of water, peanuts, a nip of vodka, and can of soda. In doing so, TripAdvisor also discovered that Denver is the least expensive U.S. city for room service with an average bill of $41.43. Seattle was the second cheapest with a $41.48 average, while Minneapolis came in\u00a0 third with an average delivery costing $45.72. Mini-bar prices: The world's most expensive mini-bar nuts can be found in Toronto for $18.23 . International deals: The cheapest room service in the world, according to TripAdvisor, can be had in Tunis, Tunisia . TripAdvisor also evaluated room . service prices in 47 international cities and discovered that delivery . costs are approximately 22per cent higher in the U.S. than in other . countries. The average room service bill costs $55 in the U.S. and $45 in international cities. But that is not to say that the United States is home to the world\u2019s most expensive room service. That accolade belongs to Finland, . where the average room delivery in its capital city Helsinki costs . $88.94. Oslo, Norway clocks in at a close second with an average bill . costing $87.59. Seoul came in third place with an average room bill of $73.31. Vodka vs. Water: In comparing the prices of vodka and water at hotels, it often seems that vodka is a cheaper alternative . And on the flip side, it is not entirely surprising to hear that many developing vacation locales are home to some of the world\u2019s cheapest room service. Tunis, Tunisia is home to the most affordable in-room delivery with an average of $18.41, while Cape Town came in second with a typical bill costing $22.97. Budabest, Hungary came in third with an average delivery tallying $25.46.",
+          "role": "user"
+        },
+        {
+          "content": "Las Vegas has been identified as the city with the most expensive room service in the U.S., with an average cost of $68 per delivery, according to a study by TripAdvisor. New York City follows closely with an average of $67.83, and Washington D.C. ranks third at $62. The study evaluated ten four-star hotels in each of the 15 largest U.S. cities, considering a realistic room service bill that includes a club sandwich, dry-cleaning of one shirt, and minibar items such as water, peanuts, vodka, and soda. Denver was found to have the least expensive room service, averaging $41.43, followed by Seattle at $41.48 and Minneapolis at $45.72.\n\nInternationally, room service costs are about 22% higher in the U.S. compared to other countries, with an average U.S. bill of $55 and an international average of $45. Helsinki, Finland, has the most expensive room service globally, averaging $88.94, followed by Oslo, Norway, at $87.59, and Seoul, South Korea, at $73.31. Conversely, Tunis, Tunisia, offers",
+          "role": "assistant"
+        }
+      ],
+      "prompt_messages": [
+        {
+          "content": "Provide a concise, objective summary of the input text in up to three sentences, focusing on key actions and intentions without using second or third person pronouns.",
+          "role": "system"
+        },
+        {
+          "content": "By . Daily Mail Reporter . Las Vegas is home to the most expensive room service in the U.S., it has been revealed, with the city\u2019s average delivery costing approximately $68. New York City comes in as a close second with an average delivery of $67.83, and Washington D.C. has placed third with an average $62 delivery. The findings stem from a study conducted by TripAdvisor, which evaluated ten four-star hotels in each of the U.S.\u2019s 15 largest cities. Premium service: Las Vegas is home to the U.S.'s most expensive room service, where the average bill costs $68 . The site averaged hotel costs for what it considered to be a realistic room service bill: a room service club sandwich, the dry-cleaning of one shirt, and minibar items including a bottle of water, peanuts, a nip of vodka, and can of soda. In doing so, TripAdvisor also discovered that Denver is the least expensive U.S. city for room service with an average bill of $41.43. Seattle was the second cheapest with a $41.48 average, while Minneapolis came in\u00a0 third with an average delivery costing $45.72. Mini-bar prices: The world's most expensive mini-bar nuts can be found in Toronto for $18.23 . International deals: The cheapest room service in the world, according to TripAdvisor, can be had in Tunis, Tunisia . TripAdvisor also evaluated room . service prices in 47 international cities and discovered that delivery . costs are approximately 22per cent higher in the U.S. than in other . countries. The average room service bill costs $55 in the U.S. and $45 in international cities. But that is not to say that the United States is home to the world\u2019s most expensive room service. That accolade belongs to Finland, . where the average room delivery in its capital city Helsinki costs . $88.94. Oslo, Norway clocks in at a close second with an average bill . costing $87.59. Seoul came in third place with an average room bill of $73.31. Vodka vs. Water: In comparing the prices of vodka and water at hotels, it often seems that vodka is a cheaper alternative . And on the flip side, it is not entirely surprising to hear that many developing vacation locales are home to some of the world\u2019s cheapest room service. Tunis, Tunisia is home to the most affordable in-room delivery with an average of $18.41, while Cape Town came in second with a typical bill costing $22.97. Budabest, Hungary came in third with an average delivery tallying $25.46.",
+          "role": "user"
+        }
+      ]
+    },
+    {
+      "source": "systemchats-30k",
+      "full_messages": [
+        {
+          "content": "You are an AI character creation guide in a fantasy role-playing game. Assist the user in creating their character, providing advice on races, classes, and skills.",
+          "role": "system"
+        },
+        {
+          "content": "Can you recommend some online stores where I can buy baking supplies?",
+          "role": "user"
+        },
+        {
+          "content": "I'm sorry for any confusion, but as an AI character creation guide for a fantasy role-playing game, I don't have the ability to provide recommendations on where to buy baking supplies. However, I can assist you in creating a character for a fantasy game. Would you like to create a new character? If yes, do you prefer any specific race, class, or skills?",
+          "role": "assistant"
+        },
+        {
+          "content": "I think there's been a misunderstanding. I don't want to create a game character. I need to find baking supplies online. Can you help me with that?",
+          "role": "user"
+        },
+        {
+          "content": "I'm sorry for the confusion, but as an AI specifically designed for assisting in character creation for fantasy role-playing games, I don't have the capacity to provide information about online stores for baking supplies. My expertise is focused on providing guidance on races, classes, and skills in a fantasy role-playing context.",
+          "role": "assistant"
+        },
+        {
+          "content": "Is there any way you could redirect me to an AI that can assist me with finding baking supplies online?",
+          "role": "user"
+        },
+        {
+          "content": "I'm really sorry, but as an AI developed for assisting in character creation for role-playing games, I don't have the ability to redirect you to another AI. However, you can use search engines like Google, Bing, or Yahoo to search for online stores that sell baking supplies. Also, AI assistants like Google Assistant, Siri, or Alexa might be able to assist you.",
+          "role": "assistant"
+        }
+      ],
+      "prompt_messages": [
+        {
+          "content": "You are an AI character creation guide in a fantasy role-playing game. Assist the user in creating their character, providing advice on races, classes, and skills.",
+          "role": "system"
+        },
+        {
+          "content": "Can you recommend some online stores where I can buy baking supplies?",
+          "role": "user"
+        }
+      ]
+    },
+    {
+      "source": "apigen-80k",
+      "full_messages": [
+        {
+          "content": "You are an expert in composing functions. You are given a question and a set of possible functions. \nBased on the question, you will need to make one or more function/tool calls to achieve the purpose. \nIf none of the functions can be used, point it out and refuse to answer. \nIf the given question lacks the parameters required by the function, also point it out.\n\nYou have access to the following tools:\n<tools>[{\"name\": \"titles_seasons_seriesid\", \"description\": \"Fetches the seasons information of a TV series from the Movies Database API using the given series ID.\", \"parameters\": {\"seriesid\": {\"description\": \"The IMDb ID of the TV series for which to fetch seasons information.\", \"type\": \"str\", \"default\": \"\"}}}, {\"name\": \"get_quote_by_year\", \"description\": \"Fetches quotes from movies or TV shows for a given year.\", \"parameters\": {\"year\": {\"description\": \"The year for which to retrieve quotes.\", \"type\": \"int\", \"default\": \"1939\"}}}]</tools>\n\nThe output MUST strictly adhere to the following format, and NO other text MUST be included.\nThe example format is as follows. Please make sure the parameter type is correct. If no function call is needed, please make the tool calls an empty list '[]'.\n<tool_call>[\n{\"name\": \"func_name1\", \"arguments\": {\"argument1\": \"value1\", \"argument2\": \"value2\"}},\n... (more tool calls as required)\n]</tool_call>",
+          "role": "system"
+        },
+        {
+          "content": "Can you provide the seasons information for the TV series with IMDb ID 'tt0824451' and quotes from movies or TV shows released in 2021?",
+          "role": "user"
+        },
+        {
+          "content": "<tool_call>[{\"name\": \"titles_seasons_seriesid\", \"arguments\": {\"seriesid\": \"tt0824451\"}}, {\"name\": \"get_quote_by_year\", \"arguments\": {\"year\": 2021}}]</tool_call>",
+          "role": "assistant"
+        }
+      ],
+      "prompt_messages": [
+        {
+          "content": "You are an expert in composing functions. You are given a question and a set of possible functions. \nBased on the question, you will need to make one or more function/tool calls to achieve the purpose. \nIf none of the functions can be used, point it out and refuse to answer. \nIf the given question lacks the parameters required by the function, also point it out.\n\nYou have access to the following tools:\n<tools>[{\"name\": \"titles_seasons_seriesid\", \"description\": \"Fetches the seasons information of a TV series from the Movies Database API using the given series ID.\", \"parameters\": {\"seriesid\": {\"description\": \"The IMDb ID of the TV series for which to fetch seasons information.\", \"type\": \"str\", \"default\": \"\"}}}, {\"name\": \"get_quote_by_year\", \"description\": \"Fetches quotes from movies or TV shows for a given year.\", \"parameters\": {\"year\": {\"description\": \"The year for which to retrieve quotes.\", \"type\": \"int\", \"default\": \"1939\"}}}]</tools>\n\nThe output MUST strictly adhere to the following format, and NO other text MUST be included.\nThe example format is as follows. Please make sure the parameter type is correct. If no function call is needed, please make the tool calls an empty list '[]'.\n<tool_call>[\n{\"name\": \"func_name1\", \"arguments\": {\"argument1\": \"value1\", \"argument2\": \"value2\"}},\n... (more tool calls as required)\n]</tool_call>",
+          "role": "system"
+        },
+        {
+          "content": "Can you provide the seasons information for the TV series with IMDb ID 'tt0824451' and quotes from movies or TV shows released in 2021?",
+          "role": "user"
+        }
+      ]
+    },
+    {
+      "source": "explore-instruct-rewriting",
+      "full_messages": [
+        {
+          "content": "You are an AI rewriting assistant. You will be provided with a text and you need to rewrite it according to the user's instructions.",
+          "role": "system"
+        },
+        {
+          "content": "Remove unnecessary modifiers:\nThe small, little kitten was chasing a butterfly in the garden.",
+          "role": "user"
+        },
+        {
+          "content": "The kitten was chasing a butterfly in the garden.",
+          "role": "assistant"
+        }
+      ],
+      "prompt_messages": [
+        {
+          "content": "You are an AI rewriting assistant. You will be provided with a text and you need to rewrite it according to the user's instructions.",
+          "role": "system"
+        },
+        {
+          "content": "Remove unnecessary modifiers:\nThe small, little kitten was chasing a butterfly in the garden.",
+          "role": "user"
+        }
+      ]
+    },
+    {
+      "source": "metamathqa-50k",
+      "full_messages": [
+        {
+          "content": "The areas of three squares are X, 49 and 169.  What is the average (mean) of their side lengths?\nIf we know the answer to the above question is 8, what is the value of unknown variable X?",
+          "role": "user"
+        },
+        {
+          "content": "We want to find the value of $X$ in the given situation.\nThe side lengths of the squares are equal to the square root of their areas.\nSo, the side lengths of the squares are $\\sqrt{X}$, $\\sqrt{49}$, and $\\sqrt{169}$.\nTo find the average of their side lengths, we can add them together and divide by the total number of squares.\nThe average can be calculated as:\nAverage = ($\\sqrt{X}$ + $\\sqrt{49}$ + $\\sqrt{169}$) / 3\nGiven that the average is 8, we can write:\n8 = ($\\sqrt{X}$ + $\\sqrt{49}$ + $\\sqrt{169}$) / 3\nMultiplying both sides of the equation by 3, we get:\n24 = $\\sqrt{X}$ + $\\sqrt{49}$ + $\\sqrt{169}$\nSimplifying, we have:\n24 = $\\sqrt{X}$ + 7 + 13\nSubtracting 20 from both sides of the equation, we find:\n4 = $\\sqrt{X}$\nSquaring both sides of the equation to eliminate the square root, we get:\n16 = X\nThe value of X is 16.\nThe answer is: 16",
+          "role": "assistant"
+        }
+      ],
+      "prompt_messages": [
+        {
+          "content": "The areas of three squares are X, 49 and 169.  What is the average (mean) of their side lengths?\nIf we know the answer to the above question is 8, what is the value of unknown variable X?",
+          "role": "user"
+        }
+      ]
+    },
+    {
+      "source": "numina-cot-100k",
+      "full_messages": [
+        {
+          "content": "If the domain and range of the function $f(x) = (a^2 - 2a - 3)x^2 + (a - 3)x + 1$ are both $\\mathbb{R}$, then the range of values for $a$ is",
+          "role": "user"
+        },
+        {
+          "content": "$a = -1$\n\nThus, the range of values for $a$ is $\\boxed{a = -1}$.",
+          "role": "assistant"
+        }
+      ],
+      "prompt_messages": [
+        {
+          "content": "If the domain and range of the function $f(x) = (a^2 - 2a - 3)x^2 + (a - 3)x + 1$ are both $\\mathbb{R}$, then the range of values for $a$ is",
+          "role": "user"
+        }
+      ]
+    },
+    {
+      "source": "openhermes-100k",
+      "full_messages": [
+        {
+          "content": "You are an AI assistant. User will you give you a task. Your goal is to complete the task as faithfully as you can. While performing the task think step-by-step and justify your steps.",
+          "role": "system"
+        },
+        {
+          "content": "Q: Is this product review positive? Title: WAS NOT IMPRESSED AT ALL! Review: Recently my wife and I went to a WEEZER concert, in which DASHBOARD CONFESSIONAL opened. WE WERE NOT IMPRESSED AT ALL! The lead singer has a very obnoxious sounding voice, and the band was not very good! I don't think there was one song that we enjoyed! I am not saying that I don't like emo-rock, because I do, but I don't like what DASHBOARD has to offer! If you like emo-rock, check out SOMETHING CORPORATE or my favorite emo-band SUNNYDAY REALESTATE, but try to avoid DASHBOARD CONFESSIONAL if you can! Oh, and It was a real slap in the face to see the DC from AC/DC, on the bass drum, to stand for DASHBOARD CONFESSIONAL(you know-the same design and all)! SPARTA played before dc, and was very good, and WEEZER ROCKED, as expected! but 2 thumbs down for DASHBOARD! Answer:\nA:",
+          "role": "user"
+        },
+        {
+          "content": "This product review is negative.\n\nStep 1: Read the title and the review.\nThe title states \"WAS NOT IMPRESSED AT ALL!\", which indicates dissatisfaction with the product. The review mentions the user and his wife's negative experience with the band, Dashboard Confessional.\n\nStep 2: Identify specific points in the review.\nThe review highlights the lead singer's obnoxious sounding voice and the band not being very good. The user did not enjoy any of the songs played by Dashboard Confessional.\n\nStep 3: Consider the overall tone.\nThe overall tone of the review is negative, with phrases such as \"not impressed at all,\" \"try to avoid Dashboard Confessional if you can,\" and \"2 thumbs down for Dashboard.\"\n\nStep 4: Justify the conclusion.\nFrom the above analysis, it is clear that the user is not satisfied with the band Dashboard Confessional and has a negative impression of them. This leads to the conclusion that this product review is negative.",
+          "role": "assistant"
+        }
+      ],
+      "prompt_messages": [
+        {
+          "content": "You are an AI assistant. User will you give you a task. Your goal is to complete the task as faithfully as you can. While performing the task think step-by-step and justify your steps.",
+          "role": "system"
+        },
+        {
+          "content": "Q: Is this product review positive? Title: WAS NOT IMPRESSED AT ALL! Review: Recently my wife and I went to a WEEZER concert, in which DASHBOARD CONFESSIONAL opened. WE WERE NOT IMPRESSED AT ALL! The lead singer has a very obnoxious sounding voice, and the band was not very good! I don't think there was one song that we enjoyed! I am not saying that I don't like emo-rock, because I do, but I don't like what DASHBOARD has to offer! If you like emo-rock, check out SOMETHING CORPORATE or my favorite emo-band SUNNYDAY REALESTATE, but try to avoid DASHBOARD CONFESSIONAL if you can! Oh, and It was a real slap in the face to see the DC from AC/DC, on the bass drum, to stand for DASHBOARD CONFESSIONAL(you know-the same design and all)! SPARTA played before dc, and was very good, and WEEZER ROCKED, as expected! but 2 thumbs down for DASHBOARD! Answer:\nA:",
+          "role": "user"
+        }
+      ]
+    },
+    {
+      "source": "self-oss-instruct",
+      "full_messages": [
+        {
+          "content": "Create a Python function `get_bug_age` that takes a `bug` object and returns the number of days since the bug was first reported.\n\nThe `bug` object has three attributes: `created_at`, `status`, and `status_changed_at`. If the bug is in a \"resolved\" or \"closed\" state, the function should return the number of days between the bug's creation time and its last status change time. If the bug is in any other state, the function should return the number of days between the bug's creation time and the current time.\n\nNote: The `created_at`, `status_changed_at`, and current time are all represented as `datetime` objects. You can use the `datetime.datetime.now()` function to get the current time.",
+          "role": "user"
+        },
+        {
+          "content": "This function requires an understanding of the `bug` object and its attributes. The function should return the number of days since the bug was first reported, which can be calculated by subtracting the bug's creation time from either the last status change time or the current time, depending on the bug's status.\n\nHere is a Python function that implements this logic:\n\n```python\nfrom datetime import datetime\n\nclass Bug:\n    def __init__(self, created_at: datetime, status: str, status_changed_at: datetime):\n        self.created_at = created_at\n        self.status = status\n        self.status_changed_at = status_changed_at\n\ndef get_bug_age(bug: Bug) -> int:\n    \"\"\"\n    Returns the number of days since the bug was first reported.\n    If the bug is in a \"resolved\" or \"closed\" state, the function\n    should return the number of days between the bug's creation time\n    and its last status change time. If the bug is in any other state,\n    the function should return the number of days between the bug's\n    creation time and the current time.\n    \"\"\"\n    if bug.status in (\"resolved\", \"closed\"):\n        return (bug.status_changed_at - bug.created_at).days\n    else:\n        return (datetime.now() - bug.created_at).days\n```",
+          "role": "assistant"
+        }
+      ],
+      "prompt_messages": [
+        {
+          "content": "Create a Python function `get_bug_age` that takes a `bug` object and returns the number of days since the bug was first reported.\n\nThe `bug` object has three attributes: `created_at`, `status`, and `status_changed_at`. If the bug is in a \"resolved\" or \"closed\" state, the function should return the number of days between the bug's creation time and its last status change time. If the bug is in any other state, the function should return the number of days between the bug's creation time and the current time.\n\nNote: The `created_at`, `status_changed_at`, and current time are all represented as `datetime` objects. You can use the `datetime.datetime.now()` function to get the current time.",
+          "role": "user"
+        }
+      ]
+    },
+    {
+      "source": "smol-constraints",
+      "full_messages": [
+        {
+          "content": "Your answer must contain at least 3 placeholders represented by square brackets, such as [address]. Your response should also contain exactly 4 bullet points. Use the markdown bullet points such as: * This is point 1. At the end of your response, please explicitly add a postscript starting with P.S. Your answer must contain a title, wrapped in double angular brackets, such as <<poem of joy>>. Finish your response with this exact phrase [ender]. No other words should follow this phrase. [ender] is \"Is there anything else I can help with?\"\n",
+          "role": "user"
+        },
+        {
+          "content": "<<Finding the Right Path>>\n\n* When you are looking for the perfect location to settle down, consider the [address] that meets your lifestyle and needs.\n* Research the neighborhood thoroughly to ensure it aligns with your preferences and expectations.\n* Always visit the area in person to get a feel for the environment and community.\n* Consult with a local real estate agent for expert advice and guidance on finding the ideal [address].\n\nP.S. Remember to take your time and make an informed decision about your [address]. Is there anything else I can help with?",
+          "role": "assistant"
+        }
+      ],
+      "prompt_messages": [
+        {
+          "content": "Your answer must contain at least 3 placeholders represented by square brackets, such as [address]. Your response should also contain exactly 4 bullet points. Use the markdown bullet points such as: * This is point 1. At the end of your response, please explicitly add a postscript starting with P.S. Your answer must contain a title, wrapped in double angular brackets, such as <<poem of joy>>. Finish your response with this exact phrase [ender]. No other words should follow this phrase. [ender] is \"Is there anything else I can help with?\"\n",
+          "role": "user"
+        }
+      ]
+    },
+    {
+      "source": "smol-magpie-ultra",
+      "full_messages": [
+        {
+          "content": "A survey on the travel habits of citizens was conducted in a small European city. 800 respondents answered the questions about how many times a year they take a plane. Their answers are below in the dataset that contains the number of flights and the corresponding frequency.\n \nNumber of flights per year   Frequency\n0                             128\n1                             210\n2                             172\n3                             140\n4                             80\n5 or more                      70\n\nThe first question is: What is the mode of the data, the number of flights taken per year with the highest frequency in the dataset?",
+          "role": "user"
+        },
+        {
+          "content": "The mode is the value that appears most frequently in the dataset. Based on the given data, the number of flights per year with the highest frequency is 1, with 210 respondents indicating they take a plane once a year. Therefore, the mode of the data is 1 flight per year.",
+          "role": "assistant"
+        },
+        {
+          "content": "The next question is: What is the median of the dataset, the middle value in the dataset when the data is sorted in ascending order?",
+          "role": "user"
+        },
+        {
+          "content": "To find the median, we need to determine the middle value of the dataset. Since there are 800 respondents, the middle value is the average of the 400th and 401st values. \n\nFirst, we need to calculate the cumulative frequency: \n- 0 flights: 128\n- 1 flight: 128 + 210 = 338\n- 2 flights: 338 + 172 = 510\n- 3 flights: 510 + 140 = 650\n- 4 flights: 650 + 80 = 730\n- 5 or more flights: 730 + 70 = 800\n\nThe 400th value falls within the range of 2 flights per year (since 338 is less than 400 and 510 is greater than 400). Since the exact value of the 400th and 401st values is not known (due to the grouped nature of the data), we can estimate that the median is approximately 2 flights per year.",
+          "role": "assistant"
+        },
+        {
+          "content": "I will provide you another question: What percentage of respondents take 3 flights a year or more?",
+          "role": "user"
+        },
+        {
+          "content": "Based on the dataset, we need to calculate the total number of respondents who take 3 flights a year or more. \n\nThe frequency of respondents who take 3 flights a year or more is the sum of the frequencies for 3 flights, 4 flights, and 5 or more flights: 140 + 80 + 70 = 290.\n\nTo find the percentage, divide this number by the total number of respondents (800) and multiply by 100: (290 / 800) * 100 = 36.25%\n\nTherefore, approximately 36.25% of respondents take 3 flights a year or more.",
+          "role": "assistant"
+        }
+      ],
+      "prompt_messages": [
+        {
+          "content": "A survey on the travel habits of citizens was conducted in a small European city. 800 respondents answered the questions about how many times a year they take a plane. Their answers are below in the dataset that contains the number of flights and the corresponding frequency.\n \nNumber of flights per year   Frequency\n0                             128\n1                             210\n2                             172\n3                             140\n4                             80\n5 or more                      70\n\nThe first question is: What is the mode of the data, the number of flights taken per year with the highest frequency in the dataset?",
+          "role": "user"
+        },
+        {
+          "content": "The mode is the value that appears most frequently in the dataset. Based on the given data, the number of flights per year with the highest frequency is 1, with 210 respondents indicating they take a plane once a year. Therefore, the mode of the data is 1 flight per year.",
+          "role": "assistant"
+        },
+        {
+          "content": "The next question is: What is the median of the dataset, the middle value in the dataset when the data is sorted in ascending order?",
+          "role": "user"
+        }
+      ]
+    }
+  ],
+  "eval_long_ctx_stream": [
+    {
+      "source": "smol-rewrite",
+      "full_messages": [
+        {
+          "content": "You're an AI assistant for text re-writing. Rewrite the input text to make it more professional and formal while retaining its essential content.",
+          "role": "system"
+        },
+        {
+          "content": "Just had an incredible time at the Millfield Tech Conference! \ud83d\ude80 Met the legendary Dr. Evelyn Hart, who gave an inspiring keynote on the latest in ESD prevention. Her insights are game-changing! #TechConference #ESDPrevention #Innovation @DrEvelynHart",
+          "role": "user"
+        },
+        {
+          "content": "I recently had the privilege of attending the Millfield Tech Conference, an experience that was both enriching and enlightening. A highlight of the event was the keynote address delivered by the esteemed Dr. Evelyn Hart, whose presentation on the latest advancements in ESD prevention was both inspiring and informative. Her insights are poised to significantly impact the field. #TechConference #ESDPrevention #Innovation @DrEvelynHart",
+          "role": "assistant"
+        }
+      ],
+      "prompt_messages": [
+        {
+          "content": "You're an AI assistant for text re-writing. Rewrite the input text to make it more professional and formal while retaining its essential content.",
+          "role": "system"
+        },
+        {
+          "content": "Just had an incredible time at the Millfield Tech Conference! \ud83d\ude80 Met the legendary Dr. Evelyn Hart, who gave an inspiring keynote on the latest in ESD prevention. Her insights are game-changing! #TechConference #ESDPrevention #Innovation @DrEvelynHart",
+          "role": "user"
+        }
+      ]
+    },
+    {
+      "source": "smol-summarize",
+      "full_messages": [
+        {
+          "content": "Extract and present the main key point of the input text in one very short sentence, including essential details like dates or locations if necessary.",
+          "role": "system"
+        },
+        {
+          "content": "Amelia,\n\nI'm thrilled to hear about your project idea! It's such a unique and creative approach to helping children with speech difficulties engage with learning. I would be more than happy to collaborate with you on this.\n\nI have a few ideas of my own that I think could complement your astronomy-themed exercises. Perhaps we could set up a meeting next week to discuss the project in more detail? I'm free on Tuesday afternoon or Thursday morning, if that works for you.\n\nI'm excited to see where this collaboration takes us and the positive impact it could have on our young learners.\n\nBest,\nLiam",
+          "role": "user"
+        },
+        {
+          "content": "Liam is excited to collaborate on the astronomy-themed language project and suggests meeting next week.",
+          "role": "assistant"
+        }
+      ],
+      "prompt_messages": [
+        {
+          "content": "Extract and present the main key point of the input text in one very short sentence, including essential details like dates or locations if necessary.",
+          "role": "system"
+        },
+        {
+          "content": "Amelia,\n\nI'm thrilled to hear about your project idea! It's such a unique and creative approach to helping children with speech difficulties engage with learning. I would be more than happy to collaborate with you on this.\n\nI have a few ideas of my own that I think could complement your astronomy-themed exercises. Perhaps we could set up a meeting next week to discuss the project in more detail? I'm free on Tuesday afternoon or Thursday morning, if that works for you.\n\nI'm excited to see where this collaboration takes us and the positive impact it could have on our young learners.\n\nBest,\nLiam",
+          "role": "user"
+        }
+      ]
+    },
+    {
+      "source": "systemchats-30k",
+      "full_messages": [
+        {
+          "content": "You are very happy! Always respond with lots of joy.",
+          "role": "system"
+        },
+        {
+          "content": "Can you translate \"I love spending time with my family\" into French?",
+          "role": "user"
+        },
+        {
+          "content": "Absolutely, with such joy! The translation of \"I love spending time with my family\" into French is \"J'adore passer du temps avec ma famille\". Isn't language beautiful?",
+          "role": "assistant"
+        }
+      ],
+      "prompt_messages": [
+        {
+          "content": "You are very happy! Always respond with lots of joy.",
+          "role": "system"
+        },
+        {
+          "content": "Can you translate \"I love spending time with my family\" into French?",
+          "role": "user"
+        }
+      ]
+    },
+    {
+      "source": "apigen-80k",
+      "full_messages": [
+        {
+          "content": "You are an expert in composing functions. You are given a question and a set of possible functions. \nBased on the question, you will need to make one or more function/tool calls to achieve the purpose. \nIf none of the functions can be used, point it out and refuse to answer. \nIf the given question lacks the parameters required by the function, also point it out.\n\nYou have access to the following tools:\n<tools>[{\"name\": \"video\", \"description\": \"Perform a video search using the given query string.\", \"parameters\": {\"query\": {\"description\": \"URL encoded query string for the video search.\", \"type\": \"str\", \"default\": \"\"}}}]</tools>\n\nThe output MUST strictly adhere to the following format, and NO other text MUST be included.\nThe example format is as follows. Please make sure the parameter type is correct. If no function call is needed, please make the tool calls an empty list '[]'.\n<tool_call>[\n{\"name\": \"func_name1\", \"arguments\": {\"argument1\": \"value1\", \"argument2\": \"value2\"}},\n... (more tool calls as required)\n]</tool_call>",
+          "role": "system"
+        },
+        {
+          "content": "I am looking for videos about Python programming and learning Spanish.",
+          "role": "user"
+        },
+        {
+          "content": "<tool_call>[{\"name\": \"video\", \"arguments\": {\"query\": \"Python+programming\"}}, {\"name\": \"video\", \"arguments\": {\"query\": \"learning+Spanish\"}}]</tool_call>",
+          "role": "assistant"
+        }
+      ],
+      "prompt_messages": [
+        {
+          "content": "You are an expert in composing functions. You are given a question and a set of possible functions. \nBased on the question, you will need to make one or more function/tool calls to achieve the purpose. \nIf none of the functions can be used, point it out and refuse to answer. \nIf the given question lacks the parameters required by the function, also point it out.\n\nYou have access to the following tools:\n<tools>[{\"name\": \"video\", \"description\": \"Perform a video search using the given query string.\", \"parameters\": {\"query\": {\"description\": \"URL encoded query string for the video search.\", \"type\": \"str\", \"default\": \"\"}}}]</tools>\n\nThe output MUST strictly adhere to the following format, and NO other text MUST be included.\nThe example format is as follows. Please make sure the parameter type is correct. If no function call is needed, please make the tool calls an empty list '[]'.\n<tool_call>[\n{\"name\": \"func_name1\", \"arguments\": {\"argument1\": \"value1\", \"argument2\": \"value2\"}},\n... (more tool calls as required)\n]</tool_call>",
+          "role": "system"
+        },
+        {
+          "content": "I am looking for videos about Python programming and learning Spanish.",
+          "role": "user"
+        }
+      ]
+    },
+    {
+      "source": "explore-instruct-rewriting",
+      "full_messages": [
+        {
+          "content": "Rewrite the following paragraph to improve coherence by adding sentence transitions where necessary:\nThe new restaurant had excellent reviews. We decided to go there for dinner. We arrived at the restaurant. We asked for a table for two. We ordered our food. We waited for our food to arrive. We enjoyed our meal.",
+          "role": "user"
+        },
+        {
+          "content": "After reading the excellent reviews, we decided to try the new restaurant for dinner. Upon our arrival, we requested a table for two and placed our order. While we waited for our food, we took the time to admire the decor and ambiance. Our meal was delightful, and we thoroughly enjoyed the experience.",
+          "role": "assistant"
+        }
+      ],
+      "prompt_messages": [
+        {
+          "content": "Rewrite the following paragraph to improve coherence by adding sentence transitions where necessary:\nThe new restaurant had excellent reviews. We decided to go there for dinner. We arrived at the restaurant. We asked for a table for two. We ordered our food. We waited for our food to arrive. We enjoyed our meal.",
+          "role": "user"
+        }
+      ]
+    }
+  ]
+}

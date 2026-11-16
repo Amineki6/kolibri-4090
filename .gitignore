@@ -1,0 +1,25 @@
+# Model weights & checkpoints (~45 GiB)
+checkpoints/
+*.safetensors
+*.pt
+*.bin
+
+# Compiled CUDA extension artifacts (rebuilt automatically by kolibri_kernels.py)
+csrc/build/
+*.so
+*.o
+build/
+*.egg-info/
+
+# Scratch & temporary benchmark files (~15 MiB)
+scratch/
+results/tmp_*.json
+*.tmp
+*.log
+
+# Python / IDE
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+.DS_Store
