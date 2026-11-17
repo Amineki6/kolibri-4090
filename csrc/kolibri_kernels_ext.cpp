@@ -3,6 +3,7 @@
 #include <cuda_runtime.h>
 #include <torch/extension.h>
 
+#include "kolibriRouterKernel.h"
 #include "tensorrt_llm/kernels/moe/post_norm/kolibriPostMoeNormKernel.h"
 #include "tensorrt_llm/kernels/moe/sandwich_norm/kolibriSandwichNormKernel.h"
 
@@ -161,7 +162,68 @@ th::Tensor fused_add_post_moe_norm(
     return moe_out;
 }
 
+std::tuple<th::Tensor, th::Tensor> fused_kolibri_router(
+    th::Tensor scores_in,
+    c10::optional<th::Tensor> bias_opt
+) {
+    TORCH_CHECK(scores_in.is_cuda() && scores_in.is_contiguous(), "scores_in must be a contiguous CUDA tensor");
+    TORCH_CHECK(scores_in.dim() == 2 && scores_in.size(1) == 384, "scores_in must have shape [tokens, 384]");
+
+    int const num_tokens = static_cast<int>(scores_in.size(0));
+    float const* bias_ptr = nullptr;
+    if (bias_opt.has_value()) {
+        auto const& b = *bias_opt;
+        TORCH_CHECK(b.is_cuda() && b.is_contiguous() && b.numel() == 384, "bias must be contiguous CUDA [384]");
+        TORCH_CHECK(b.scalar_type() == th::kFloat, "bias must be float32");
+        bias_ptr = b.data_ptr<float>();
+    }
+
+    c10::cuda::CUDAGuard device_guard(scores_in.device());
+    auto stream = at::cuda::getCurrentCUDAStream(scores_in.device().index()).stream();
+
+    auto out_indices = th::empty({num_tokens, 6}, scores_in.options().dtype(th::kInt32));
+    auto out_weights = th::empty({num_tokens, 6}, scores_in.options().dtype(th::kFloat));
+    if (num_tokens == 0) {
+        return {out_indices, out_weights};
+    }
+
+    auto const dtype = scores_in.scalar_type();
+    if (dtype == th::kBFloat16) {
+        kolibri::kernels::invokeKolibriRouter<__nv_bfloat16>(
+            reinterpret_cast<__nv_bfloat16 const*>(scores_in.data_ptr()),
+            bias_ptr,
+            out_indices.data_ptr<int32_t>(),
+            out_weights.data_ptr<float>(),
+            num_tokens,
+            stream
+        );
+    } else if (dtype == th::kHalf) {
+        kolibri::kernels::invokeKolibriRouter<half>(
+            reinterpret_cast<half const*>(scores_in.data_ptr()),
+            bias_ptr,
+            out_indices.data_ptr<int32_t>(),
+            out_weights.data_ptr<float>(),
+            num_tokens,
+            stream
+        );
+    } else if (dtype == th::kFloat) {
+        kolibri::kernels::invokeKolibriRouter<float>(
+            scores_in.data_ptr<float>(),
+            bias_ptr,
+            out_indices.data_ptr<int32_t>(),
+            out_weights.data_ptr<float>(),
+            num_tokens,
+            stream
+        );
+    } else {
+        TORCH_CHECK(false, "Unsupported dtype for fused_kolibri_router (expected bf16, fp16, or fp32)");
+    }
+
+    return {out_indices, out_weights};
+}
+
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     m.def("fused_sandwich_norm", &fused_sandwich_norm, "Kolibri fused sandwich RMSNorm");
     m.def("fused_add_post_moe_norm", &fused_add_post_moe_norm, "Kolibri fused add + post-MoE RMSNorm");
+    m.def("fused_kolibri_router", &fused_kolibri_router, "Kolibri fused Top-6 sigmoid router");
 }

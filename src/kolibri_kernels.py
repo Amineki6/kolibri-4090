@@ -18,10 +18,6 @@ if _ENV_BIN not in os.environ.get("PATH", "").split(os.pathsep):
 import flashinfer  # noqa: E402
 import tensorrt_llm  # noqa: E402, F401 - registers torch.ops.trtllm custom ops
 import torch  # noqa: E402
-from tensorrt_llm._torch.moe.custom_ops.kolibri_router_custom_op import (  # noqa: E402
-    fused_kolibri_router as _trtllm_fused_kolibri_router,
-    is_kolibri_router_available,
-)
 from torch.utils.cpp_extension import load as _load_cpp_ext  # noqa: E402
 
 from .config import HD, ROPE_THETA, TOPK
@@ -48,8 +44,9 @@ def _get_ext():
             str(_CSRC_DIR / "kolibri_kernels_ext.cpp"),
             str(_CSRC_DIR / "kolibriSandwichNormKernel.cu"),
             str(_CSRC_DIR / "kolibriPostMoeNormKernel.cu"),
+            str(_CSRC_DIR / "kolibriRouterKernel.cu"),
         ],
-        extra_include_paths=[str(_CSRC_DIR / "include")],
+        extra_include_paths=[str(_CSRC_DIR), str(_CSRC_DIR / "include")],
         extra_cflags=["-O3", "-std=c++20", "-DNDEBUG"],
         extra_cuda_cflags=["-O3", "--use_fast_math", "-std=c++20", "-DENABLE_BF16", "-DNDEBUG"],
         build_directory=str(_BUILD_DIR),
@@ -79,22 +76,15 @@ def fused_add_post_moe_norm(
     return _get_ext().fused_add_post_moe_norm(routed_out, shared_out, gamma, eps)
 
 
-assert is_kolibri_router_available(), "TensorRT-LLM kolibri_router_op is required"
-
-
 def fused_kolibri_router(
     router_logits: torch.Tensor,
     gate_bias: Optional[torch.Tensor] = None,
     k: int = TOPK,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
-    """Run Kolibri's fused CUDA sigmoid Top-K router (`norm_topk_prob=False`, unnormalized weights)."""
-    return _trtllm_fused_kolibri_router(
-        router_logits,
-        bias=gate_bias,
-        k=k,
-        norm_topk_prob=False,
-        output_dtype=torch.float32,
-    )
+    """Run Kolibri's standalone CUDA sigmoid Top-6 router (`norm_topk_prob=False`)."""
+    assert k == TOPK, f"Standalone kolibri_router expects k={TOPK}, got {k}"
+    bias = gate_bias.float() if gate_bias is not None and gate_bias.dtype != torch.float32 else gate_bias
+    return _get_ext().fused_kolibri_router(router_logits, bias)
 
 
 def flashinfer_rmsnorm(x: torch.Tensor, weight: torch.Tensor, eps: float) -> torch.Tensor:
