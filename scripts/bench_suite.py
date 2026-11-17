@@ -280,9 +280,11 @@ def run_suite(
     long_decode_steps: int,
     cal_samples: int,
     resample: bool,
+    scenarios_filter: Optional[Sequence[str]] = None,
 ) -> Dict[str, Any]:
     _set_deterministic(seed)
     dev = torch.device("cuda:0")
+    selected = set(scenarios_filter) if scenarios_filter else {"cold", "calibrated", "prefill", "long_ctx"}
 
     ds = load_or_create_benchmark_dataset(
         seed=seed, resample=resample, n_calibration=cal_samples
@@ -323,38 +325,45 @@ def run_suite(
     eval_steps = max(decode_steps // 2, 24)
 
     # 1. Cold decode (0..109 init, 3 held-out test prompts)
-    _reset_cold_engine(engine)
-    scenarios["cold_decode"] = _run_multi_prompt_decode(
-        engine, ids_decode_eval, steps_per_prompt=eval_steps, promote_misses=True
-    )
+    if "cold" in selected:
+        _reset_cold_engine(engine)
+        scenarios["cold_decode"] = _run_multi_prompt_decode(
+            engine, ids_decode_eval, steps_per_prompt=eval_steps, promote_misses=True
+        )
 
-    # Calibrate hot cache ONCE strictly on `train` split and snapshot slot IDs
-    _reset_cold_engine(engine)
-    cal_stats = engine.calibrate_hot_cache(cal_prompts)
-    calibrated_slots = [engine.cache.cache_states[li].slot_to_expert.tolist() for li in range(NUM_LAYERS)]
+    cal_stats = None
+    calibrated_slots: Optional[List[List[int]]] = None
+    if selected & {"calibrated", "prefill", "long_ctx"}:
+        # Calibrate hot cache ONCE strictly on `train` split and snapshot slot IDs
+        _reset_cold_engine(engine)
+        cal_stats = engine.calibrate_hot_cache(cal_prompts)
+        calibrated_slots = [engine.cache.cache_states[li].slot_to_expert.tolist() for li in range(NUM_LAYERS)]
 
     # 2. Calibrated decode (same 3 held-out test prompts -> exact apples-to-apples vs cold)
-    _seed_calibrated_slots(engine, calibrated_slots)
-    scenarios["calibrated_decode"] = _run_multi_prompt_decode(
-        engine, ids_decode_eval, steps_per_prompt=eval_steps, promote_misses=True
-    )
-
-    # 4. Prefill N=256 and N=1024 on calibrated cache using disjoint held-out `test` tokens
-    _seed_calibrated_slots(engine, calibrated_slots)
-    scenarios["prefill_n256"] = _bench_prefill_only(engine, prefill_stream[:256])
-    scenarios["prefill_n1024"] = _bench_prefill_only(engine, prefill_stream[:1024])
-
-    # 5. Long-context decode at 16k, 64k, 100k (fresh calibrated slots per depth + held-out stream)
-    _seed_kv_deterministically(engine, seed)
-    for name, ctx_pos in (
-        ("long_ctx_16k", 16_000),
-        ("long_ctx_64k", 64_000),
-        ("long_ctx_100k", 100_000),
-    ):
+    if "calibrated" in selected and calibrated_slots is not None:
         _seed_calibrated_slots(engine, calibrated_slots)
-        scenarios[name] = _bench_long_context_decode(
-            engine, ctx_pos=ctx_pos, fixed_token_stream=long_stream, n_steps=long_decode_steps
+        scenarios["calibrated_decode"] = _run_multi_prompt_decode(
+            engine, ids_decode_eval, steps_per_prompt=eval_steps, promote_misses=True
         )
+
+    # 3. Prefill N=256 and N=1024 on calibrated cache using disjoint held-out `test` tokens
+    if "prefill" in selected and calibrated_slots is not None:
+        _seed_calibrated_slots(engine, calibrated_slots)
+        scenarios["prefill_n256"] = _bench_prefill_only(engine, prefill_stream[:256])
+        scenarios["prefill_n1024"] = _bench_prefill_only(engine, prefill_stream[:1024])
+
+    # 4. Long-context decode at 16k, 64k, 100k (fresh calibrated slots per depth + held-out stream)
+    if "long_ctx" in selected and calibrated_slots is not None:
+        _seed_kv_deterministically(engine, seed)
+        for name, ctx_pos in (
+            ("long_ctx_16k", 16_000),
+            ("long_ctx_64k", 64_000),
+            ("long_ctx_100k", 100_000),
+        ):
+            _seed_calibrated_slots(engine, calibrated_slots)
+            scenarios[name] = _bench_long_context_decode(
+                engine, ctx_pos=ctx_pos, fixed_token_stream=long_stream, n_steps=long_decode_steps
+            )
 
     free_b, total_b = torch.cuda.mem_get_info(dev)
     return {
@@ -478,6 +487,13 @@ def main() -> None:
     parser.add_argument("--resample", action="store_true", help="Force fresh HF stream sample")
     parser.add_argument("--decode-steps", type=int, default=64)
     parser.add_argument("--long-decode-steps", type=int, default=32)
+    parser.add_argument(
+        "--scenarios",
+        nargs="+",
+        choices=("cold", "calibrated", "prefill", "long_ctx"),
+        default=None,
+        help="Subset of scenarios to run (default: all)",
+    )
     args = parser.parse_args()
 
     if args.compare_only is not None:
@@ -492,6 +508,7 @@ def main() -> None:
         long_decode_steps=args.long_decode_steps,
         cal_samples=args.cal_samples,
         resample=args.resample,
+        scenarios_filter=args.scenarios,
     )
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
