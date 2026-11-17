@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-SERVING_ROOT = Path("/home/mkina/profiling/serving")
+SERVING_ROOT = Path(__file__).resolve().parent.parent
 CHECKPOINTS_DIR = SERVING_ROOT / "checkpoints"
 RESULTS_DIR = SERVING_ROOT / "results"
 SCRATCH_DIR = SERVING_ROOT / "scratch"
