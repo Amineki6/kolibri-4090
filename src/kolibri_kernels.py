@@ -8,7 +8,7 @@ compiled `kolibri_router_op` and FlashInfer's RMSNorm / RoPE / SiLU+Mul ops.
 import os
 import sys
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional, Sequence, Tuple
 
 # Ensure conda env bin dir (`ninja`, etc.) is on PATH before JIT/extension imports.
 _ENV_BIN = str(Path(sys.executable).resolve().parent)
@@ -42,13 +42,15 @@ def _get_ext():
         name="kolibri_kernels_ext",
         sources=[
             str(_CSRC_DIR / "kolibri_kernels_ext.cpp"),
+            str(_CSRC_DIR / "kolibriGatherExperts.cpp"),
             str(_CSRC_DIR / "kolibriSandwichNormKernel.cu"),
             str(_CSRC_DIR / "kolibriPostMoeNormKernel.cu"),
             str(_CSRC_DIR / "kolibriRouterKernel.cu"),
         ],
         extra_include_paths=[str(_CSRC_DIR), str(_CSRC_DIR / "include")],
-        extra_cflags=["-O3", "-std=c++20", "-DNDEBUG"],
+        extra_cflags=["-O3", "-std=c++20", "-DNDEBUG", "-fopenmp"],
         extra_cuda_cflags=["-O3", "--use_fast_math", "-std=c++20", "-DENABLE_BF16", "-DNDEBUG"],
+        extra_ldflags=["-fopenmp"],
         build_directory=str(_BUILD_DIR),
         verbose=False,
     )
@@ -85,6 +87,21 @@ def fused_kolibri_router(
     assert k == TOPK, f"Standalone kolibri_router expects k={TOPK}, got {k}"
     bias = gate_bias.float() if gate_bias is not None and gate_bias.dtype != torch.float32 else gate_bias
     return _get_ext().fused_kolibri_router(router_logits, bias)
+
+
+def detected_pcore_count() -> int:
+    """Return the detected Linux performance (P) core count."""
+    return int(_get_ext().detected_pcore_count())
+
+
+def gather_experts_omp(
+    src_tensors: Sequence[torch.Tensor],
+    dst_tensors: Sequence[torch.Tensor],
+    expert_ids: torch.Tensor,
+    num_threads: int = 0,
+) -> None:
+    """Gather expert rows across all slabs into pinned host memory using P-core pinned OpenMP."""
+    _get_ext().gather_experts_omp(list(src_tensors), list(dst_tensors), expert_ids, int(num_threads))
 
 
 def flashinfer_rmsnorm(x: torch.Tensor, weight: torch.Tensor, eps: float) -> torch.Tensor:

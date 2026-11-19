@@ -3,6 +3,7 @@
 #include <cuda_runtime.h>
 #include <torch/extension.h>
 
+#include "kolibriGatherExperts.h"
 #include "kolibriRouterKernel.h"
 #include "tensorrt_llm/kernels/moe/post_norm/kolibriPostMoeNormKernel.h"
 #include "tensorrt_llm/kernels/moe/sandwich_norm/kolibriSandwichNormKernel.h"
@@ -226,4 +227,14 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     m.def("fused_sandwich_norm", &fused_sandwich_norm, "Kolibri fused sandwich RMSNorm");
     m.def("fused_add_post_moe_norm", &fused_add_post_moe_norm, "Kolibri fused add + post-MoE RMSNorm");
     m.def("fused_kolibri_router", &fused_kolibri_router, "Kolibri fused Top-6 sigmoid router");
+    m.def("detected_pcore_count", &kolibri::host::detected_pcore_count, "Detected Linux P-core count");
+    m.def(
+        "gather_experts_omp",
+        &kolibri::host::gather_experts_omp,
+        "Gather expert rows into pinned host bounce buffers via P-core pinned OpenMP",
+        py::arg("src_tensors"),
+        py::arg("dst_tensors"),
+        py::arg("expert_ids"),
+        py::arg("num_threads") = 0
+    );
 }

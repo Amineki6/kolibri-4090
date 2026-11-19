@@ -1,16 +1,26 @@
 """Step 3.1: Three-tier host/VRAM expert cache, pinned DMA bounce buffers, and LRU/LFU tracker."""
 
+import ctypes
+import errno
 import math
+import mmap
+import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 import torch
 from safetensors.torch import load_file
 
 from .config import E, NUM_LAYERS, PHASE2_MODEL_DIR, TOPK
+from .kolibri_kernels import gather_experts_omp
+
+_MADV_WILLNEED: int = getattr(mmap, "MADV_WILLNEED", 3)
+_MADV_POPULATE_READ: int = getattr(mmap, "MADV_POPULATE_READ", 22)
+_TOUCH_STRIDE_BYTES: int = 4096
+_UNSET = object()
 
 NON_EXPERT_KEYS = (
     "input_ln",
@@ -73,6 +83,83 @@ def _slab_bytes(slab: Dict[str, torch.Tensor]) -> int:
     return sum(t.numel() * t.element_size() for t in slab.values())
 
 
+def _get_libc_madvise() -> Optional[Callable[[int, int, int], int]]:
+    """Return ctypes handle to `libc.madvise`, or `None` if unsupported."""
+    if sys.platform == "win32":
+        return None
+    try:
+        libc = ctypes.CDLL(None, use_errno=True)
+        madvise_fn = libc.madvise
+        madvise_fn.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.c_int]
+        madvise_fn.restype = ctypes.c_int
+        return madvise_fn
+    except (OSError, AttributeError):
+        return None
+
+
+def _strided_page_touch(t: torch.Tensor, stride_bytes: int = _TOUCH_STRIDE_BYTES) -> None:
+    """Fault all pages of a contiguous CPU tensor via zero-copy 4 KB strided reads."""
+    byte_view = t.reshape(-1).view(torch.uint8)
+    _ = int(byte_view[::stride_bytes].sum().item()) + int(byte_view[-1].item())
+
+
+def _prefault_host_routed(
+    host_routed: Sequence[Dict[str, torch.Tensor]],
+    *,
+    _madvise_fn: object = _UNSET,
+    _allow_populate_read: Optional[bool] = None,
+) -> str:
+    """Pre-fault mmap-backed CPU expert tensors with zero extra allocation.
+
+    Attempts Linux `MADV_POPULATE_READ` first, falling back to `MADV_WILLNEED`
+    plus a 4 KB strided byte touch on `EINVAL`/`ENOSYS`/`EOPNOTSUPP` or non-Linux OSes.
+    """
+    madvise_fn = _get_libc_madvise() if _madvise_fn is _UNSET else _madvise_fn
+    page_size = mmap.PAGESIZE
+    use_populate_read = (
+        sys.platform.startswith("linux")
+        if _allow_populate_read is None
+        else _allow_populate_read
+    ) and (madvise_fn is not None)
+
+    used_populate_read = False
+    used_fallback = False
+
+    for slab in host_routed:
+        for t in slab.values():
+            if t.device.type != "cpu" or t.numel() == 0:
+                continue
+            if not t.is_contiguous():
+                t = t.contiguous()
+
+            addr = t.data_ptr()
+            nbytes = t.numel() * t.element_size()
+            aligned_addr = addr & ~(page_size - 1)
+            aligned_len = (addr + nbytes) - aligned_addr
+
+            if use_populate_read:
+                ctypes.set_errno(0)
+                rc = madvise_fn(aligned_addr, aligned_len, _MADV_POPULATE_READ)  # type: ignore[operator]
+                if rc == 0:
+                    used_populate_read = True
+                    continue
+                if ctypes.get_errno() in (errno.EINVAL, errno.ENOSYS, errno.EOPNOTSUPP):
+                    use_populate_read = False
+
+            used_fallback = True
+            if madvise_fn is not None:
+                madvise_fn(aligned_addr, aligned_len, _MADV_WILLNEED)  # type: ignore[operator]
+            _strided_page_touch(t)
+
+    if used_populate_read and used_fallback:
+        return "mixed"
+    if used_populate_read:
+        return "madv_populate_read"
+    if used_fallback:
+        return "madv_willneed_touch"
+    return "noop"
+
+
 class LayerCacheState:
     """CPU-side O(1) LRU tracking metadata for one layer's persistent GPU slots [0 .. K-1]."""
 
@@ -125,6 +212,8 @@ class HybridExpertCache:
         decode_miss_slots: int = TOPK,
         bounce_slots: int = 274,
         stage_slots: int = E,
+        prefault_host: bool = True,
+        gather_threads: int = 0,
     ) -> None:
         self.model_dir = Path(model_dir)
         self.device = device or torch.device("cuda:0")
@@ -133,6 +222,9 @@ class HybridExpertCache:
         self.cache_slots = persistent_slots_per_layer + decode_miss_slots  # e.g. 118 + 6 = 124
         self.bounce_slots = bounce_slots
         self.stage_slots = stage_slots
+        self.prefault_host = prefault_host
+        self.prefault_mode: str = "disabled"
+        self.gather_threads = gather_threads
 
         self.copy_stream = torch.cuda.Stream(device=self.device)
         self.copy_events = [torch.cuda.Event(), torch.cuda.Event()]
@@ -178,6 +270,9 @@ class HybridExpertCache:
             routed_cpu = {k: layer_cpu[k].contiguous() for k in MARLIN_KEYS}
             self.host_routed.append(routed_cpu)
             del layer_cpu
+
+        if self.prefault_host:
+            self.prefault_mode = _prefault_host_routed(self.host_routed)
 
         after_non_exp = torch.cuda.memory_allocated(self.device)
 
@@ -232,11 +327,15 @@ class HybridExpertCache:
         assert m <= self.bounce_slots, f"Miss count {m} exceeds bounce_slots={self.bounce_slots}"
         if m == 0:
             return 0
-        idx_cpu = expert_ids.to(dtype=torch.long, device="cpu")
+        idx_cpu = expert_ids.to(dtype=torch.long, device="cpu").contiguous()
         host_layer = self.host_routed[layer_idx]
         bounce = self.pinned_bounce[buf_idx]
-        for key in MARLIN_KEYS:
-            torch.index_select(host_layer[key], 0, idx_cpu, out=bounce[key][:m])
+        gather_experts_omp(
+            [host_layer[k] for k in MARLIN_KEYS],
+            [bounce[k] for k in MARLIN_KEYS],
+            idx_cpu,
+            num_threads=self.gather_threads,
+        )
         return m
 
     def dma_pinned_to_gpu_slab(
