@@ -1,8 +1,10 @@
 #include <c10/cuda/CUDAGuard.h>
 #include <c10/cuda/CUDAStream.h>
+#include <cstdint>
 #include <cuda_runtime.h>
 #include <torch/extension.h>
 
+#include "kolibriCacheOps.h"
 #include "kolibriGatherExperts.h"
 #include "kolibriRouterKernel.h"
 #include "tensorrt_llm/kernels/moe/post_norm/kolibriPostMoeNormKernel.h"
@@ -223,10 +225,28 @@ std::tuple<th::Tensor, th::Tensor> fused_kolibri_router(
     return {out_indices, out_weights};
 }
 
+uint64_t configure_cuda_mempool(int64_t device_idx) {
+    c10::cuda::CUDAGuard device_guard(static_cast<c10::DeviceIndex>(device_idx));
+    cudaMemPool_t mempool = nullptr;
+    cudaError_t err = cudaDeviceGetDefaultMemPool(&mempool, static_cast<int>(device_idx));
+    TORCH_CHECK(err == cudaSuccess && mempool != nullptr,
+                "cudaDeviceGetDefaultMemPool failed: ", cudaGetErrorString(err));
+    uint64_t threshold = UINT64_MAX;
+    err = cudaMemPoolSetAttribute(mempool, cudaMemPoolAttrReleaseThreshold, &threshold);
+    TORCH_CHECK(err == cudaSuccess,
+                "cudaMemPoolSetAttribute failed: ", cudaGetErrorString(err));
+    uint64_t readback = 0;
+    err = cudaMemPoolGetAttribute(mempool, cudaMemPoolAttrReleaseThreshold, &readback);
+    TORCH_CHECK(err == cudaSuccess,
+                "cudaMemPoolGetAttribute failed: ", cudaGetErrorString(err));
+    return readback;
+}
+
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     m.def("fused_sandwich_norm", &fused_sandwich_norm, "Kolibri fused sandwich RMSNorm");
     m.def("fused_add_post_moe_norm", &fused_add_post_moe_norm, "Kolibri fused add + post-MoE RMSNorm");
     m.def("fused_kolibri_router", &fused_kolibri_router, "Kolibri fused Top-6 sigmoid router");
+    m.def("configure_cuda_mempool", &configure_cuda_mempool, "Set default CUDA mempool release threshold to UINT64_MAX");
     m.def("detected_pcore_count", &kolibri::host::detected_pcore_count, "Detected Linux P-core count");
     m.def(
         "gather_experts_omp",
@@ -236,5 +256,27 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         py::arg("dst_tensors"),
         py::arg("expert_ids"),
         py::arg("num_threads") = 0
+    );
+    m.def(
+        "dma_slabs_async",
+        &kolibri::cache::dma_slabs_async,
+        "Issue async H2D cudaMemcpyAsync across all slabs and record copy event",
+        py::arg("src_slabs"),
+        py::arg("dst_slabs"),
+        py::arg("count"),
+        py::arg("dst_offset"),
+        py::arg("stream_ptr"),
+        py::arg("event_ptr")
+    );
+    m.def(
+        "promote_experts_cuda",
+        &kolibri::cache::promote_experts_cuda,
+        "Promote missed experts from scratch to LRU victim slots and update LUT in 1 CUDA kernel",
+        py::arg("cache_slabs"),
+        py::arg("gpu_expert_to_slot"),
+        py::arg("src_slots"),
+        py::arg("dst_slots"),
+        py::arg("old_eids"),
+        py::arg("new_eids")
     );
 }

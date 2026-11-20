@@ -15,7 +15,7 @@ import torch
 from safetensors.torch import load_file
 
 from .config import E, NUM_LAYERS, PHASE2_MODEL_DIR, TOPK
-from .kolibri_kernels import gather_experts_omp
+from .kolibri_kernels import dma_slabs_async, gather_experts_omp, promote_experts_cuda
 
 _MADV_WILLNEED: int = getattr(mmap, "MADV_WILLNEED", 3)
 _MADV_POPULATE_READ: int = getattr(mmap, "MADV_POPULATE_READ", 22)
@@ -228,6 +228,11 @@ class HybridExpertCache:
 
         self.copy_stream = torch.cuda.Stream(device=self.device)
         self.copy_events = [torch.cuda.Event(), torch.cuda.Event()]
+        for ev in self.copy_events:
+            ev.record(self.copy_stream)
+        self.copy_stream.synchronize()
+        self._copy_stream_ptr: int = int(self.copy_stream.cuda_stream)
+        self._copy_event_ptrs: List[int] = [int(ev.cuda_event) for ev in self.copy_events]
 
         self.globals: Dict[str, torch.Tensor] = {}
         self.gpu_non_experts: List[Dict[str, torch.Tensor]] = []
@@ -241,6 +246,10 @@ class HybridExpertCache:
         # Shared across all 50 layers: 2 pinned host bounce slabs + 2 GPU staging slabs
         self.pinned_bounce: List[Dict[str, torch.Tensor]] = []
         self.gpu_stage: List[Dict[str, torch.Tensor]] = []
+        self._host_routed_lists: List[List[torch.Tensor]] = []
+        self._gpu_caches_lists: List[List[torch.Tensor]] = []
+        self._pinned_bounce_lists: List[List[torch.Tensor]] = []
+        self._slab_lists_by_id: Dict[int, List[torch.Tensor]] = {}
 
         self.stats: Optional[CacheMemoryStats] = None
         self._load_all()
@@ -298,6 +307,14 @@ class HybridExpertCache:
             self.gpu_stage.append(_alloc_marlin_slab(self.stage_slots, self.device, pin_memory=False))
             self.pinned_bounce.append(_alloc_marlin_slab(self.bounce_slots, torch.device("cpu"), pin_memory=True))
 
+        self._host_routed_lists = [[layer[k] for k in MARLIN_KEYS] for layer in self.host_routed]
+        self._gpu_caches_lists = [[layer[k] for k in MARLIN_KEYS] for layer in self.gpu_caches]
+        self._pinned_bounce_lists = [[buf[k] for k in MARLIN_KEYS] for buf in self.pinned_bounce]
+        for slab, slab_list in zip(self.gpu_caches, self._gpu_caches_lists):
+            self._slab_lists_by_id[id(slab)] = slab_list
+        for slab in self.gpu_stage:
+            self._slab_lists_by_id[id(slab)] = [slab[k] for k in MARLIN_KEYS]
+
         torch.cuda.synchronize(self.device)
         torch.cuda.empty_cache()
         after_stage = torch.cuda.memory_allocated(self.device)
@@ -328,11 +345,9 @@ class HybridExpertCache:
         if m == 0:
             return 0
         idx_cpu = expert_ids.to(dtype=torch.long, device="cpu").contiguous()
-        host_layer = self.host_routed[layer_idx]
-        bounce = self.pinned_bounce[buf_idx]
         gather_experts_omp(
-            [host_layer[k] for k in MARLIN_KEYS],
-            [bounce[k] for k in MARLIN_KEYS],
+            self._host_routed_lists[layer_idx],
+            self._pinned_bounce_lists[buf_idx],
             idx_cpu,
             num_threads=self.gather_threads,
         )
@@ -348,11 +363,17 @@ class HybridExpertCache:
         """Issue async H2D DMA from `pinned_bounce[buf_idx][:m]` into `dst_slab[dst_offset:dst_offset+m]`."""
         if m == 0:
             return
-        bounce = self.pinned_bounce[buf_idx]
-        with torch.cuda.stream(self.copy_stream):
-            for key in MARLIN_KEYS:
-                dst_slab[key][dst_offset : dst_offset + m].copy_(bounce[key][:m], non_blocking=True)
-            self.copy_events[buf_idx].record(self.copy_stream)
+        dst_list = self._slab_lists_by_id.get(id(dst_slab))
+        if dst_list is None:
+            dst_list = [dst_slab[k] for k in MARLIN_KEYS]
+        dma_slabs_async(
+            self._pinned_bounce_lists[buf_idx],
+            dst_list,
+            m,
+            dst_offset,
+            self._copy_stream_ptr,
+            self._copy_event_ptrs[buf_idx],
+        )
 
     def stage_experts_async(
         self, layer_idx: int, expert_ids: torch.Tensor, buf_idx: int
@@ -382,21 +403,31 @@ class HybridExpertCache:
         self, layer_idx: int, miss_expert_ids: Sequence[int], step_id: int
     ) -> List[Tuple[int, int]]:
         """Promote missed experts from decode scratch slots [K : K+m] into persistent LRU slots [0..K-1] on GPU."""
+        if not miss_expert_ids:
+            return []
         state = self.cache_states[layer_idx]
-        cache_slab = self.gpu_caches[layer_idx]
         promotions: List[Tuple[int, int]] = []
+        src_slots: List[int] = []
+        dst_slots: List[int] = []
+        old_eids: List[int] = []
+        new_eids: List[int] = []
         for idx, eid in enumerate(miss_expert_ids):
             eid_int = int(eid)
             victim_slot = state.select_lru_victim()
-            src_slot = self.persistent_slots + idx
-            for key in MARLIN_KEYS:
-                cache_slab[key][victim_slot].copy_(cache_slab[key][src_slot])
-            state.assign_slot(victim_slot, eid_int, step_id)
+            old_eid = state.assign_slot(victim_slot, eid_int, step_id)
+            src_slots.append(self.persistent_slots + idx)
+            dst_slots.append(victim_slot)
+            old_eids.append(old_eid)
+            new_eids.append(eid_int)
             promotions.append((eid_int, victim_slot))
-        if promotions:
-            self.gpu_expert_to_slot[layer_idx].copy_(
-                torch.from_numpy(state.expert_to_slot), non_blocking=True
-            )
+        promote_experts_cuda(
+            self._gpu_caches_lists[layer_idx],
+            self.gpu_expert_to_slot[layer_idx],
+            src_slots,
+            dst_slots,
+            old_eids,
+            new_eids,
+        )
         return promotions
 
     def seed_layer_cache(self, layer_idx: int, expert_ids: Sequence[int], step_id: int = 0) -> None:

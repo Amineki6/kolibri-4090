@@ -17,6 +17,13 @@ results/tmp_*.json
 *.tmp
 *.log
 
+# Nsight Systems traces & exports
+traces/
+*.nsys-rep
+*.sqlite
+*.qdrep
+*.qdstrm
+
 # Python / IDE
 __pycache__/
 *.py[cod]

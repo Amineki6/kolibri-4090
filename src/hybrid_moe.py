@@ -12,7 +12,7 @@ from tensorrt_llm.quantization.utils.marlin_utils import marlin_make_workspace
 
 from .config import E, H, I_MOE, MOE_BLOCK_SIZE, NUM_LAYERS, TOPK
 from .expert_cache import BYTES_PER_EXPERT, HybridExpertCache
-from .kolibri_kernels import flashinfer_silu_and_mul
+from .kolibri_kernels import configure_cuda_mempool, flashinfer_silu_and_mul
 
 
 @dataclass
@@ -50,6 +50,7 @@ class HybridMarlinMoE:
         self.cache = cache
         self.device = cache.device
         self.max_tokens = max_tokens
+        configure_cuda_mempool(self.device)
         self.workspace = marlin_make_workspace(self.device, max_blocks_per_sm=4)
 
         max_pairs = max_tokens * TOPK

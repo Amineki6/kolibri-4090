@@ -42,6 +42,7 @@ def _get_ext():
         name="kolibri_kernels_ext",
         sources=[
             str(_CSRC_DIR / "kolibri_kernels_ext.cpp"),
+            str(_CSRC_DIR / "kolibriCacheOps.cu"),
             str(_CSRC_DIR / "kolibriGatherExperts.cpp"),
             str(_CSRC_DIR / "kolibriSandwichNormKernel.cu"),
             str(_CSRC_DIR / "kolibriPostMoeNormKernel.cu"),
@@ -104,6 +105,39 @@ def gather_experts_omp(
     _get_ext().gather_experts_omp(list(src_tensors), list(dst_tensors), expert_ids, int(num_threads))
 
 
+def dma_slabs_async(
+    src_slabs: Sequence[torch.Tensor],
+    dst_slabs: Sequence[torch.Tensor],
+    count: int,
+    dst_offset: int,
+    stream_ptr: int,
+    event_ptr: int,
+) -> None:
+    """Issue async H2D cudaMemcpyAsync across all slabs on `stream_ptr` and record `event_ptr`."""
+    _get_ext().dma_slabs_async(
+        list(src_slabs), list(dst_slabs), int(count), int(dst_offset), int(stream_ptr), int(event_ptr)
+    )
+
+
+def promote_experts_cuda(
+    cache_slabs: Sequence[torch.Tensor],
+    gpu_expert_to_slot: torch.Tensor,
+    src_slots: Sequence[int],
+    dst_slots: Sequence[int],
+    old_eids: Sequence[int],
+    new_eids: Sequence[int],
+) -> None:
+    """Copy promoted experts and update `gpu_expert_to_slot` in one fused CUDA kernel."""
+    _get_ext().promote_experts_cuda(
+        list(cache_slabs),
+        gpu_expert_to_slot,
+        list(src_slots),
+        list(dst_slots),
+        list(old_eids),
+        list(new_eids),
+    )
+
+
 def flashinfer_rmsnorm(x: torch.Tensor, weight: torch.Tensor, eps: float) -> torch.Tensor:
     """FlashInfer RMSNorm (direct call, supports 2D `[N, D]` CUDA tensors)."""
     return flashinfer.rmsnorm(x, weight, eps)
@@ -148,9 +182,15 @@ def flashinfer_silu_and_mul(x: torch.Tensor) -> torch.Tensor:
     return flashinfer.silu_and_mul(x)
 
 
+def configure_cuda_mempool(device: torch.device = torch.device("cuda:0")) -> int:
+    """Keep stream-ordered CUDA mempool blocks cached across syncs (`ReleaseThreshold=UINT64_MAX`)."""
+    dev_idx = device.index if device.index is not None else torch.cuda.current_device()
+    return int(_get_ext().configure_cuda_mempool(int(dev_idx)))
+
+
 def warmup_kernels(device: torch.device = torch.device("cuda:0")) -> None:
     """Eagerly compile/load all CUDA extensions and FlashInfer JIT modules before timing."""
-    _get_ext()
+    configure_cuda_mempool(device)
     d = torch.empty((1, 2560), dtype=torch.bfloat16, device=device)
     g = torch.ones((2560,), dtype=torch.bfloat16, device=device)
     fused_sandwich_norm(d, d, g, g, 1e-6)

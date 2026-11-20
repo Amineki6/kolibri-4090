@@ -8,6 +8,7 @@ continuation reuse, `/load` + `/unload`, and live RTX 4090 + host telemetry at `
 
 import argparse
 import collections
+import gc
 import json
 import os
 import re
@@ -49,6 +50,67 @@ FLAT_WEB_TYPES = {
     ".js": "text/javascript; charset=utf-8",
     ".svg": "image/svg+xml",
 }
+
+FAST_MODE_BTN_HTML = (
+    '<button class="st-btn st-btn--secondary" id="fast-mode-btn" type="button" '
+    'title="Pause background nvidia-smi polling, disable Python GC during decode, '
+    'use O(1) incremental decoding, and batch SSE flushes" aria-pressed="false">'
+    "Fast Decode: OFF</button>\n  "
+)
+
+FAST_MODE_SCRIPT_HTML = """<script>
+(() => {
+  const btn = document.getElementById("fast-mode-btn");
+  if (!btn) return;
+  let enabled = false;
+  function render() {
+    btn.textContent = enabled ? "Fast Decode: ON" : "Fast Decode: OFF";
+    btn.setAttribute("aria-pressed", enabled ? "true" : "false");
+    btn.classList.toggle("st-btn--primary", enabled);
+    btn.classList.toggle("st-btn--secondary", !enabled);
+  }
+  async function sync() {
+    try {
+      const r = await fetch("/fast-mode", { cache: "no-store" });
+      if (r.ok) {
+        const d = await r.json();
+        enabled = !!d.fast_mode;
+        render();
+      }
+    } catch (e) {}
+  }
+  btn.addEventListener("click", async () => {
+    btn.disabled = true;
+    try {
+      const r = await fetch("/fast-mode", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: !enabled }),
+      });
+      if (r.ok) {
+        const d = await r.json();
+        enabled = !!d.fast_mode;
+        render();
+      }
+    } catch (e) {
+    } finally {
+      btn.disabled = false;
+    }
+  });
+  sync();
+})();
+</script>
+"""
+
+
+def render_index_html(html_text: str) -> bytes:
+    """Inject the Fast Decode header toggle button and script into Strata's index.html."""
+    target_btn = '<button class="st-btn st-btn--icon" id="theme-btn"'
+    if target_btn in html_text:
+        html_text = html_text.replace(target_btn, FAST_MODE_BTN_HTML + target_btn, 1)
+    if "</body>" in html_text:
+        html_text = html_text.replace("</body>", FAST_MODE_SCRIPT_HTML + "</body>", 1)
+    return html_text.encode("utf-8")
 
 
 def resolve_subtree_file(path: str) -> Optional[Tuple[Path, str]]:
@@ -92,8 +154,15 @@ class HardwareSampler:
             "threads": os.cpu_count(),
         }
         self._stop = threading.Event()
+        self._paused = threading.Event()
         self._thread = threading.Thread(target=self._loop, daemon=True)
         self._thread.start()
+
+    def set_paused(self, paused: bool) -> None:
+        if paused:
+            self._paused.set()
+        else:
+            self._paused.clear()
 
     @staticmethod
     def _read_cpu_name() -> str:
@@ -185,6 +254,9 @@ class HardwareSampler:
 
     def _loop(self) -> None:
         while not self._stop.is_set():
+            if self._paused.is_set():
+                self._stop.wait(0.25)
+                continue
             cpu, ram_u, ram_t = self._sample_cpu_mem()
             gpu = self._sample_gpu()
             with self._lock:
@@ -217,6 +289,7 @@ class KolibriService:
         self.infer_lock = threading.Lock()
         self.state_lock = threading.Lock()
         self.hw = HardwareSampler()
+        self.fast_mode: bool = False
         self.shared_settings: Optional[Dict[str, Any]] = None
 
         self.engine: Optional[KolibriHybridEngine] = None
@@ -259,8 +332,16 @@ class KolibriService:
         self._hist_thread = threading.Thread(target=self._record_history_loop, daemon=True)
         self._hist_thread.start()
 
+    def set_fast_mode(self, enabled: bool) -> bool:
+        self.fast_mode = bool(enabled)
+        self.hw.set_paused(self.fast_mode)
+        return self.fast_mode
+
     def _record_history_loop(self) -> None:
         while True:
+            if self.fast_mode:
+                time.sleep(1.0)
+                continue
             hw = self.hw.snapshot()
             with self.state_lock:
                 live_tok_s = self.live["tok_s"] if self.live["state"] == "generating" else None
@@ -407,7 +488,7 @@ def make_handler(svc: KolibriService):
 
             if path == "" or path == "/index.html":
                 f = STRATA_WEB / "index.html"
-                self._send_bytes(200, f.read_bytes(), "text/html; charset=utf-8")
+                self._send_bytes(200, render_index_html(f.read_text("utf-8")), "text/html; charset=utf-8")
                 return
             if path.startswith("/fonts/"):
                 name = path[len("/fonts/") :]
@@ -469,6 +550,9 @@ def make_handler(svc: KolibriService):
             if path == "/settings":
                 self._json(200, {"shared": bool(svc.shared_settings), "defaults": svc.shared_settings})
                 return
+            if path == "/fast-mode":
+                self._json(200, {"fast_mode": svc.fast_mode})
+                return
             if path == "/mcp":
                 self._json(200, {"servers": [], "tools": 0})
                 return
@@ -498,6 +582,11 @@ def make_handler(svc: KolibriService):
             if path == "/settings":
                 svc.shared_settings = body.get("defaults")
                 self._json(200, {"shared": bool(svc.shared_settings), "defaults": svc.shared_settings})
+                return
+            if path == "/fast-mode":
+                enabled = body.get("enabled")
+                new_val = svc.set_fast_mode(not svc.fast_mode if enabled is None else bool(enabled))
+                self._json(200, {"fast_mode": new_val})
                 return
             if path == "/v1/chat/completions":
                 self._handle_chat(body)
@@ -619,78 +708,131 @@ def make_handler(svc: KolibriService):
 
                     gen_ids: List[int] = []
                     emitted_len = 0
+                    pending_ids: List[int] = []
+                    sse_r_buf: List[str] = []
+                    sse_c_buf: List[str] = []
+                    sse_tok_cnt = 0
                     in_think = effort != "none"
                     full_answer: List[str] = []
                     full_reasoning: List[str] = []
                     finish_reason = "length"
+                    fast = svc.fast_mode
+
+                    def flush_sse_buf() -> bool:
+                        nonlocal sse_tok_cnt
+                        if not sse_r_buf and not sse_c_buf:
+                            sse_tok_cnt = 0
+                            return True
+                        delta_obj: Dict[str, str] = {}
+                        if sse_r_buf:
+                            delta_obj["reasoning_content"] = "".join(sse_r_buf)
+                            sse_r_buf.clear()
+                        if sse_c_buf:
+                            delta_obj["content"] = "".join(sse_c_buf)
+                            sse_c_buf.clear()
+                        sse_tok_cnt = 0
+                        return self._write_sse(
+                            {
+                                "id": req_id,
+                                "object": "chat.completion.chunk",
+                                "created": created,
+                                "model": MODEL_NAME,
+                                "choices": [{"index": 0, "delta": delta_obj, "finish_reason": None}],
+                            }
+                        )
 
                     with svc.state_lock:
                         svc.live.update(state="generating", prefill_tok_s_mean=prefill_rate)
 
-                    t_d0 = time.perf_counter()
-                    next_id = eng._sample(logits, temperature, top_k, top_p=top_p, generator=gen_rng)
-
-                    for step_idx in range(max_tokens):
-                        if next_id in (EOS_TOKEN_ID, PAD_TOKEN_ID):
-                            finish_reason = "stop"
-                            break
-
-                        gen_ids.append(next_id)
-                        decoded = eng.tokenizer.decode(gen_ids, skip_special_tokens=True)
-                        # Hold trailing U+FFFD replacement characters until multi-byte UTF-8 completes
-                        clean_len = len(decoded)
-                        while clean_len > emitted_len and decoded[clean_len - 1] == "\ufffd":
-                            clean_len -= 1
-                        delta_text = decoded[emitted_len:clean_len]
-                        emitted_len = clean_len
-
-                        if delta_text:
-                            delta_obj: Dict[str, str] = {}
-                            if in_think:
-                                if "</think>" in delta_text:
-                                    r_part, c_part = delta_text.split("</think>", 1)
-                                    in_think = False
-                                    r_part = r_part.rstrip("\n")
-                                    c_part = c_part.lstrip("\n")
-                                    if r_part:
-                                        delta_obj["reasoning_content"] = r_part
-                                        full_reasoning.append(r_part)
-                                    if c_part:
-                                        delta_obj["content"] = c_part
-                                        full_answer.append(c_part)
-                                else:
-                                    delta_obj["reasoning_content"] = delta_text
-                                    full_reasoning.append(delta_text)
-                            else:
-                                delta_obj["content"] = delta_text
-                                full_answer.append(delta_text)
-
-                            if stream and delta_obj:
-                                ok = self._write_sse(
-                                    {
-                                        "id": req_id,
-                                        "object": "chat.completion.chunk",
-                                        "created": created,
-                                        "model": MODEL_NAME,
-                                        "choices": [{"index": 0, "delta": delta_obj, "finish_reason": None}],
-                                    }
-                                )
-                                if not ok:
-                                    finish_reason = "disconnect"
-                                    break
-
-                        elapsed_dec = max(time.perf_counter() - t_d0, 1e-6)
-                        with svc.state_lock:
-                            svc.live["generated"] = len(gen_ids)
-                            svc.live["tok_s"] = len(gen_ids) / elapsed_dec
-
-                        if step_idx + 1 >= max_tokens:
-                            break
-                        logits = eng.step(next_id, promote_misses=True)
+                    if fast:
+                        gc.collect()
+                        gc.disable()
+                    try:
+                        t_d0 = time.perf_counter()
                         next_id = eng._sample(logits, temperature, top_k, top_p=top_p, generator=gen_rng)
 
-                    torch.cuda.synchronize(eng.device)
-                    decode_ms = (time.perf_counter() - t_d0) * 1000.0
+                        for step_idx in range(max_tokens):
+                            if next_id in (EOS_TOKEN_ID, PAD_TOKEN_ID):
+                                finish_reason = "stop"
+                                break
+
+                            gen_ids.append(next_id)
+                            if fast:
+                                pending_ids.append(next_id)
+                                dec_piece = eng.tokenizer.decode(pending_ids, skip_special_tokens=True)
+                                if dec_piece and dec_piece.endswith("\ufffd"):
+                                    delta_text = ""
+                                else:
+                                    delta_text = dec_piece
+                                    pending_ids.clear()
+                            else:
+                                decoded = eng.tokenizer.decode(gen_ids, skip_special_tokens=True)
+                                # Hold trailing U+FFFD replacement characters until multi-byte UTF-8 completes
+                                clean_len = len(decoded)
+                                while clean_len > emitted_len and decoded[clean_len - 1] == "\ufffd":
+                                    clean_len -= 1
+                                delta_text = decoded[emitted_len:clean_len]
+                                emitted_len = clean_len
+
+                            if delta_text:
+                                think_ended = False
+                                if in_think:
+                                    if "</think>" in delta_text:
+                                        r_part, c_part = delta_text.split("</think>", 1)
+                                        in_think = False
+                                        think_ended = True
+                                        r_part = r_part.rstrip("\n")
+                                        c_part = c_part.lstrip("\n")
+                                        if r_part:
+                                            sse_r_buf.append(r_part)
+                                            full_reasoning.append(r_part)
+                                        if c_part:
+                                            sse_c_buf.append(c_part)
+                                            full_answer.append(c_part)
+                                    else:
+                                        sse_r_buf.append(delta_text)
+                                        full_reasoning.append(delta_text)
+                                else:
+                                    sse_c_buf.append(delta_text)
+                                    full_answer.append(delta_text)
+
+                                if stream:
+                                    sse_tok_cnt += 1
+                                    if not fast or sse_tok_cnt >= 4 or think_ended:
+                                        if not flush_sse_buf():
+                                            finish_reason = "disconnect"
+                                            break
+
+                            if not fast or (step_idx & 7) == 7:
+                                elapsed_dec = max(time.perf_counter() - t_d0, 1e-6)
+                                with svc.state_lock:
+                                    svc.live["generated"] = len(gen_ids)
+                                    svc.live["tok_s"] = len(gen_ids) / elapsed_dec
+
+                            if step_idx + 1 >= max_tokens:
+                                break
+                            logits = eng.step(next_id, promote_misses=True)
+                            next_id = eng._sample(logits, temperature, top_k, top_p=top_p, generator=gen_rng)
+
+                        if fast and pending_ids and finish_reason != "disconnect":
+                            rem_text = eng.tokenizer.decode(pending_ids, skip_special_tokens=True)
+                            pending_ids.clear()
+                            if rem_text:
+                                if in_think:
+                                    sse_r_buf.append(rem_text)
+                                    full_reasoning.append(rem_text)
+                                else:
+                                    sse_c_buf.append(rem_text)
+                                    full_answer.append(rem_text)
+                        if stream and finish_reason != "disconnect":
+                            if not flush_sse_buf():
+                                finish_reason = "disconnect"
+
+                        torch.cuda.synchronize(eng.device)
+                        decode_ms = (time.perf_counter() - t_d0) * 1000.0
+                    finally:
+                        if fast:
+                            gc.enable()
                     total_s = time.perf_counter() - req_start
 
                     # Track exact KV sequence for fast turn continuation
