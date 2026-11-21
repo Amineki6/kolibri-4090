@@ -113,10 +113,12 @@ class KolibriHybridEngine:
         persistent_slots_per_layer: int = 110,
         max_seq_len: int = 100_000,
         prefill_chunk_size: int = 256,
+        use_cuda_graphs: bool = True,
     ) -> None:
         self.model_dir = Path(model_dir)
         self.device = device or torch.device("cuda:0")
         self.prefill_chunk_size = prefill_chunk_size
+        self.use_cuda_graphs = use_cuda_graphs
 
         self.tokenizer = Tokenizer.from_file(str(self.model_dir / "tokenizer.json"))
         self.cache = HybridExpertCache(
@@ -128,9 +130,63 @@ class KolibriHybridEngine:
             stage_slots=384,
         )
         self.kv = HybridKVCache(max_seq_len=max_seq_len, device=self.device)
-        self.moe = HybridMarlinMoE(self.cache, max_tokens=max(prefill_chunk_size, 512))
+        self.moe = HybridMarlinMoE(
+            self.cache,
+            max_tokens=max(prefill_chunk_size, 512),
+            use_cuda_graphs=use_cuda_graphs,
+        )
         self.inv_freq = make_rope_inv_freq(self.device)
         warmup_kernels(self.device)
+
+        # Static n=1 decode buffers and per-layer Pre-MoE CUDA Graph A cache
+        self._step_tok_cpu = torch.zeros((1,), dtype=torch.long).pin_memory()
+        self._step_tok_gpu = torch.zeros((1,), dtype=torch.long, device=self.device)
+        self._dec_cur = torch.empty((1, H), dtype=torch.bfloat16, device=self.device)
+        self._dec_res = torch.empty((1, H), dtype=torch.bfloat16, device=self.device)
+        self._dec_moe_in = self.moe._graph_moe_in
+        self._dec_ids = torch.empty((1, TOPK), dtype=torch.int32, device=self.device)
+        self._dec_wts = self.moe._graph_topk_w
+        self._pre_moe_graph_pool = torch.cuda.graph_pool_handle()
+        self._pre_moe_graph_stream = torch.cuda.Stream(device=self.device)
+        self._pre_moe_graphs: List[Optional[torch.cuda.CUDAGraph]] = [None] * NUM_LAYERS
+
+    def _run_pre_moe_eager(self, li: int) -> None:
+        L = self.cache.gpu_non_experts[li]
+        if li == 0:
+            h = F.rms_norm(self._dec_res, (H,), L["input_ln"], RMS_EPS)
+        else:
+            flashinfer_fused_add_rmsnorm(self._dec_cur, self._dec_res, L["input_ln"], RMS_EPS)
+            h = self._dec_cur
+        attn_out = self.kv.attention_decode_step(h, L, li)
+        res_new, moe_in = fused_sandwich_norm(
+            attn_out, self._dec_res, L["post_attn_ln"], L["pre_moe_ln"], RMS_EPS
+        )
+        self._dec_res.copy_(res_new)
+        self._dec_moe_in.copy_(moe_in)
+        ids, wts = kolibri_route(self._dec_moe_in, L)
+        self._dec_ids.copy_(ids)
+        self._dec_wts.copy_(wts)
+
+    def _run_pre_moe_graphed(self, li: int) -> None:
+        g = self._pre_moe_graphs[li]
+        if g is None:
+            cur_stream = torch.cuda.current_stream(self.device)
+            saved_cur = self._dec_cur.clone()
+            saved_res = self._dec_res.clone()
+            self._pre_moe_graph_stream.wait_stream(cur_stream)
+            with torch.cuda.stream(self._pre_moe_graph_stream):
+                for _ in range(2):
+                    self._run_pre_moe_eager(li)
+            g = torch.cuda.CUDAGraph()
+            with torch.cuda.graph(
+                g, pool=self._pre_moe_graph_pool, stream=self._pre_moe_graph_stream
+            ):
+                self._run_pre_moe_eager(li)
+            cur_stream.wait_stream(self._pre_moe_graph_stream)
+            self._dec_cur.copy_(saved_cur)
+            self._dec_res.copy_(saved_res)
+            self._pre_moe_graphs[li] = g
+        g.replay()
 
     @torch.inference_mode()
     def _forward_layers(
@@ -141,6 +197,26 @@ class KolibriHybridEngine:
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Run one contiguous chunk [n] through all 50 layers, advance KV cache, return (cur, residual)."""
         n = int(token_ids.shape[0])
+        if n == 1 and counts is None and self.use_cuda_graphs:
+            self.kv.prepare_decode_step()
+            self._dec_res.copy_(F.embedding(token_ids, self.cache.globals["embed_tokens"]).to(torch.bfloat16))
+            for li in range(NUM_LAYERS):
+                self._run_pre_moe_graphed(li)
+                L = self.cache.gpu_non_experts[li]
+                routed, shared = self.moe.forward_layer(
+                    self._dec_moe_in,
+                    self._dec_ids,
+                    self._dec_wts,
+                    li,
+                    shared_fn=lambda m_in, layer=L: shared_expert(m_in, layer),
+                    promote_misses=promote_misses,
+                )
+                self._dec_cur.copy_(
+                    fused_add_post_moe_norm(routed, shared, L["post_ffn_ln"], RMS_EPS)
+                )
+            self.kv.advance(1)
+            return self._dec_cur, self._dec_res
+
         cur = F.embedding(token_ids, self.cache.globals["embed_tokens"]).to(torch.bfloat16)
         residual: Optional[torch.Tensor] = None
 
@@ -211,8 +287,9 @@ class KolibriHybridEngine:
     @torch.inference_mode()
     def step(self, token_id: int, promote_misses: bool = True) -> torch.Tensor:
         """Execute one autoregressive decode step and return logits `[1, vocab]`."""
-        t = torch.tensor([token_id], dtype=torch.long, device=self.device)
-        return self._forward_chunk(t, promote_misses=promote_misses)
+        self._step_tok_cpu[0] = int(token_id)
+        self._step_tok_gpu.copy_(self._step_tok_cpu, non_blocking=True)
+        return self._forward_chunk(self._step_tok_gpu, promote_misses=promote_misses)
 
     @torch.inference_mode()
     def calibrate_hot_cache(self, prompts: Sequence[str]) -> Dict[str, float]:

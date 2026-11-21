@@ -234,4 +234,85 @@ void promote_experts_cuda(
     TORCH_CHECK(err == cudaSuccess, "promote_experts_kernel launch failed: ", cudaGetErrorString(err));
 }
 
+__global__ void kv_append_decode_kernel(
+    int4 const* __restrict__ k_in,
+    int4 const* __restrict__ v_in,
+    int4* __restrict__ k_cache,
+    int4* __restrict__ v_cache,
+    int64_t const* __restrict__ pos_ptr,
+    int64_t ring_mod,
+    int n_vec4
+) {
+    int const tid = threadIdx.x;
+    if (tid >= n_vec4) {
+        return;
+    }
+    int64_t const pos = *pos_ptr;
+    int64_t const slot = (ring_mod > 0) ? (pos % ring_mod) : pos;
+    size_t const off = static_cast<size_t>(slot) * static_cast<size_t>(n_vec4) + static_cast<size_t>(tid);
+    k_cache[off] = k_in[tid];
+    v_cache[off] = v_in[tid];
+}
+
+void kv_append_decode_cuda(
+    torch::Tensor const& k_in,
+    torch::Tensor const& v_in,
+    torch::Tensor const& k_cache,
+    torch::Tensor const& v_cache,
+    torch::Tensor const& pos_buf,
+    int64_t ring_mod
+) {
+    TORCH_CHECK(
+        k_in.is_cuda() && v_in.is_cuda() && k_cache.is_cuda() && v_cache.is_cuda() && pos_buf.is_cuda(),
+        "kv_append_decode_cuda expects CUDA tensors"
+    );
+    TORCH_CHECK(
+        k_in.is_contiguous() && v_in.is_contiguous() && k_cache.is_contiguous() && v_cache.is_contiguous() && pos_buf.is_contiguous(),
+        "kv_append_decode_cuda expects contiguous tensors"
+    );
+    auto const dev = k_cache.device();
+    TORCH_CHECK(
+        k_in.device() == dev && v_in.device() == dev && v_cache.device() == dev && pos_buf.device() == dev,
+        "kv_append_decode_cuda tensors must share CUDA device"
+    );
+    TORCH_CHECK(pos_buf.scalar_type() == torch::kLong && pos_buf.numel() == 1, "pos_buf must be int64[1]");
+    TORCH_CHECK(k_in.scalar_type() == k_cache.scalar_type() && v_in.scalar_type() == v_cache.scalar_type(), "KV dtype mismatch");
+    TORCH_CHECK(k_cache.dim() >= 2 && v_cache.dim() >= 2 && k_cache.size(0) == v_cache.size(0), "KV cache shape mismatch");
+
+    size_t const k_in_bytes = static_cast<size_t>(k_in.numel()) * k_in.element_size();
+    size_t const v_in_bytes = static_cast<size_t>(v_in.numel()) * v_in.element_size();
+    size_t const k_row_bytes = static_cast<size_t>(k_cache.stride(0)) * k_cache.element_size();
+    size_t const v_row_bytes = static_cast<size_t>(v_cache.stride(0)) * v_cache.element_size();
+    TORCH_CHECK(
+        k_in_bytes == k_row_bytes && v_in_bytes == v_row_bytes && k_in_bytes == v_in_bytes,
+        "KV token and cache slot byte sizes must match"
+    );
+    TORCH_CHECK(k_in_bytes % sizeof(int4) == 0, "KV slot bytes must be 16-byte aligned");
+    TORCH_CHECK(
+        (reinterpret_cast<uintptr_t>(k_in.data_ptr()) % alignof(int4) == 0) &&
+            (reinterpret_cast<uintptr_t>(v_in.data_ptr()) % alignof(int4) == 0) &&
+            (reinterpret_cast<uintptr_t>(k_cache.data_ptr()) % alignof(int4) == 0) &&
+            (reinterpret_cast<uintptr_t>(v_cache.data_ptr()) % alignof(int4) == 0),
+        "KV pointers must be 16-byte aligned"
+    );
+
+    int const n_vec4 = static_cast<int>(k_in_bytes / sizeof(int4));
+    TORCH_CHECK(n_vec4 > 0 && n_vec4 <= 256, "Unsupported KV vector count per token");
+    int const block_threads = ((n_vec4 + 31) / 32) * 32;
+
+    c10::cuda::CUDAGuard device_guard(dev);
+    cudaStream_t const stream = at::cuda::getCurrentCUDAStream(dev.index()).stream();
+    kv_append_decode_kernel<<<1, block_threads, 0, stream>>>(
+        reinterpret_cast<int4 const*>(k_in.data_ptr()),
+        reinterpret_cast<int4 const*>(v_in.data_ptr()),
+        reinterpret_cast<int4*>(k_cache.data_ptr()),
+        reinterpret_cast<int4*>(v_cache.data_ptr()),
+        pos_buf.data_ptr<int64_t>(),
+        ring_mod,
+        n_vec4
+    );
+    cudaError_t err = cudaGetLastError();
+    TORCH_CHECK(err == cudaSuccess, "kv_append_decode_kernel launch failed: ", cudaGetErrorString(err));
+}
+
 }  // namespace kolibri::cache

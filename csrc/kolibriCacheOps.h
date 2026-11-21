@@ -29,4 +29,15 @@ void promote_experts_cuda(
     std::vector<int64_t> const& new_eids
 );
 
+/// Append single-token `[1, NKV, HD]` K/V vectors into NHD `k_cache`/`v_cache` at `pos_buf`
+/// (modulo `ring_mod` when `ring_mod > 0`), suitable for CUDA Graph capture.
+void kv_append_decode_cuda(
+    torch::Tensor const& k_in,
+    torch::Tensor const& v_in,
+    torch::Tensor const& k_cache,
+    torch::Tensor const& v_cache,
+    torch::Tensor const& pos_buf,
+    int64_t ring_mod
+);
+
 }  // namespace kolibri::cache

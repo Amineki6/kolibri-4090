@@ -279,4 +279,15 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         py::arg("old_eids"),
         py::arg("new_eids")
     );
+    m.def(
+        "kv_append_decode_cuda",
+        &kolibri::cache::kv_append_decode_cuda,
+        "Append single-token K/V into NHD KV cache using device position tensor",
+        py::arg("k_in"),
+        py::arg("v_in"),
+        py::arg("k_cache"),
+        py::arg("v_cache"),
+        py::arg("pos_buf"),
+        py::arg("ring_mod") = 0
+    );
 }

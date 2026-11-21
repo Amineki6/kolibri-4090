@@ -138,6 +138,18 @@ def promote_experts_cuda(
     )
 
 
+def kv_append_decode_cuda(
+    k_in: torch.Tensor,
+    v_in: torch.Tensor,
+    k_cache: torch.Tensor,
+    v_cache: torch.Tensor,
+    pos_buf: torch.Tensor,
+    ring_mod: int = 0,
+) -> None:
+    """Append single-token K/V into NHD cache using a device-side position tensor."""
+    _get_ext().kv_append_decode_cuda(k_in, v_in, k_cache, v_cache, pos_buf, int(ring_mod))
+
+
 def flashinfer_rmsnorm(x: torch.Tensor, weight: torch.Tensor, eps: float) -> torch.Tensor:
     """FlashInfer RMSNorm (direct call, supports 2D `[N, D]` CUDA tensors)."""
     return flashinfer.rmsnorm(x, weight, eps)

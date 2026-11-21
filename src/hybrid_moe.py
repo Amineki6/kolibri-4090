@@ -46,10 +46,16 @@ class HybridMoEStats:
 class HybridMarlinMoE:
     """Routes MoE layers across 0-miss decode, <=6-miss single-launch decode, and Hit/Miss prefill."""
 
-    def __init__(self, cache: HybridExpertCache, max_tokens: int = 1024) -> None:
+    def __init__(
+        self,
+        cache: HybridExpertCache,
+        max_tokens: int = 1024,
+        use_cuda_graphs: bool = True,
+    ) -> None:
         self.cache = cache
         self.device = cache.device
         self.max_tokens = max_tokens
+        self.use_cuda_graphs = use_cuda_graphs
         configure_cuda_mempool(self.device)
         self.workspace = marlin_make_workspace(self.device, max_blocks_per_sm=4)
 
@@ -59,11 +65,18 @@ class HybridMarlinMoE:
         self._s_ids1 = torch.empty(max_pad, dtype=torch.int32, device=self.device)
         self._e_ids1 = torch.empty(max_blocks, dtype=torch.int32, device=self.device)
         self._n_pad1 = torch.empty(1, dtype=torch.int32, device=self.device)
-        self._s_ids2 = torch.empty(max_pad, dtype=torch.int32, device=self.device)
-        self._e_ids2 = torch.empty(max_blocks, dtype=torch.int32, device=self.device)
-        self._n_pad2 = torch.empty(1, dtype=torch.int32, device=self.device)
         self._pin_slots = torch.empty(max_pairs, dtype=torch.int32).pin_memory()
         self._gpu_slots = torch.empty(max_pairs, dtype=torch.int32, device=self.device)
+        self._miss_eids_cpu = torch.empty(cache.decode_miss_slots, dtype=torch.long)
+
+        # Static n=1 decode buffers and per-layer CUDA Graph B cache (shared memory pool)
+        self._graph_moe_in = torch.empty((1, H), dtype=torch.bfloat16, device=self.device)
+        self._graph_topk_w = torch.empty((1, TOPK), dtype=torch.float32, device=self.device)
+        self._graph_slots = self._gpu_slots[:TOPK].view(1, TOPK)
+        self._graph_pool = torch.cuda.graph_pool_handle()
+        self._graph_stream = torch.cuda.Stream(device=self.device)
+        self._decode_moe_graphs: List[Optional[torch.cuda.CUDAGraph]] = [None] * NUM_LAYERS
+        self._graph_routed_outs: List[Optional[torch.Tensor]] = [None] * NUM_LAYERS
 
         self._buf_cursor = 0
         self._step_id = 0
@@ -114,29 +127,17 @@ class HybridMarlinMoE:
 
         hidden = flashinfer_silu_and_mul(g1)
 
-        n_g2 = n_rows * top_k
-        ids_g2 = ids_2d.reshape(-1, 1).contiguous()
+        # Reuse GEMM1 block alignment: ids_2d.reshape(-1, 1) has the identical token-expert sequence.
         w_g2 = weights_2d.reshape(-1, 1).contiguous()
-        if top_k == 1:
-            s_ids2, e_ids2, n_pad2 = s_ids1, e_ids1, self._n_pad1
-        else:
-            max_pad2 = n_g2 + num_experts * MOE_BLOCK_SIZE
-            s_ids2 = self._s_ids2[:max_pad2]
-            e_ids2 = self._e_ids2[: (max_pad2 + MOE_BLOCK_SIZE - 1) // MOE_BLOCK_SIZE]
-            n_pad2 = self._n_pad2
-            torch.ops.trtllm.moe_align_block_size(
-                ids_g2, num_experts, MOE_BLOCK_SIZE, s_ids2, e_ids2, n_pad2
-            )
-
         return torch.ops.trtllm.marlin_nvfp4_moe_gemm(
             hidden,
             slab["w2_marlin"],
             b_scales=slab["w2_scale_marlin"],
             global_scale=slab["w2_gs_marlin"],
             workspace=self.workspace,
-            sorted_token_ids=s_ids2,
-            expert_ids=e_ids2,
-            num_tokens_past_padded=n_pad2,
+            sorted_token_ids=s_ids1,
+            expert_ids=e_ids1,
+            num_tokens_past_padded=self._n_pad1,
             topk_weights=w_g2,
             moe_block_size=MOE_BLOCK_SIZE,
             top_k=1,
@@ -146,6 +147,34 @@ class HybridMarlinMoE:
             out_dtype=torch.bfloat16,
             use_fp32_reduce=False,
         )
+
+    def _run_decode_moe_eager(self, layer_idx: int) -> torch.Tensor:
+        g2 = self._run_marlin_gemm1_gemm2(
+            self._graph_moe_in,
+            self._graph_slots,
+            self._graph_topk_w,
+            self.cache.gpu_caches[layer_idx],
+            num_experts=self.cache.cache_slots,
+            top_k=TOPK,
+        )
+        return sum_topk_expert_outputs(g2, 1, TOPK, H, torch.bfloat16)
+
+    def _run_decode_moe_graphed(self, layer_idx: int) -> torch.Tensor:
+        g = self._decode_moe_graphs[layer_idx]
+        if g is None:
+            cur_stream = torch.cuda.current_stream(self.device)
+            self._graph_stream.wait_stream(cur_stream)
+            with torch.cuda.stream(self._graph_stream):
+                for _ in range(2):
+                    _ = self._run_decode_moe_eager(layer_idx)
+            g = torch.cuda.CUDAGraph()
+            with torch.cuda.graph(g, pool=self._graph_pool, stream=self._graph_stream):
+                out = self._run_decode_moe_eager(layer_idx)
+            cur_stream.wait_stream(self._graph_stream)
+            self._graph_routed_outs[layer_idx] = out
+            self._decode_moe_graphs[layer_idx] = g
+        g.replay()
+        return self._graph_routed_outs[layer_idx]  # type: ignore[return-value]
 
     def forward_layer(
         self,
@@ -202,15 +231,22 @@ class HybridMarlinMoE:
                 self.stats.decode_0miss_calls += 1
                 n_pairs = n * TOPK
                 self._gpu_slots[:n_pairs].copy_(pin_slots[:n_pairs], non_blocking=True)
-                g2 = self._run_marlin_gemm1_gemm2(
-                    moe_in,
-                    self._gpu_slots[:n_pairs].view(n, TOPK),
-                    topk_weights,
-                    self.cache.gpu_caches[layer_idx],
-                    num_experts=k_persist,
-                    top_k=TOPK,
-                )
-                routed = sum_topk_expert_outputs(g2, n, TOPK, H, torch.bfloat16)
+                if n == 1 and self.use_cuda_graphs:
+                    if moe_in.data_ptr() != self._graph_moe_in.data_ptr():
+                        self._graph_moe_in.copy_(moe_in)
+                    if topk_weights.data_ptr() != self._graph_topk_w.data_ptr():
+                        self._graph_topk_w.copy_(topk_weights)
+                    routed = self._run_decode_moe_graphed(layer_idx)
+                else:
+                    g2 = self._run_marlin_gemm1_gemm2(
+                        moe_in,
+                        self._gpu_slots[:n_pairs].view(n, TOPK),
+                        topk_weights,
+                        self.cache.gpu_caches[layer_idx],
+                        num_experts=k_persist,
+                        top_k=TOPK,
+                    )
+                    routed = sum_topk_expert_outputs(g2, n, TOPK, H, torch.bfloat16)
                 shared = shared_fn(moe_in) if shared_fn is not None else None
                 return routed, shared
 
@@ -221,23 +257,32 @@ class HybridMarlinMoE:
                 buf = self._buf_cursor
                 self._buf_cursor ^= 1
 
-                miss_t = torch.tensor(miss_unique_list, dtype=torch.long)
+                for m_i, m_eid in enumerate(miss_unique_list):
+                    self._miss_eids_cpu[m_i] = m_eid
+                miss_t = self._miss_eids_cpu[:n_miss_unique]
                 self.cache.decode_stage_misses_async(layer_idx, miss_t, buf_idx=buf)
                 shared = shared_fn(moe_in) if shared_fn is not None else None
 
                 n_pairs = n * TOPK
                 self._gpu_slots[:n_pairs].copy_(pin_slots[:n_pairs], non_blocking=True)
-                self.cache.wait_copy(buf)
-
-                g2 = self._run_marlin_gemm1_gemm2(
-                    moe_in,
-                    self._gpu_slots[:n_pairs].view(n, TOPK),
-                    topk_weights,
-                    self.cache.gpu_caches[layer_idx],
-                    num_experts=self.cache.cache_slots,
-                    top_k=TOPK,
-                )
-                routed = sum_topk_expert_outputs(g2, n, TOPK, H, torch.bfloat16)
+                if n == 1 and self.use_cuda_graphs:
+                    if moe_in.data_ptr() != self._graph_moe_in.data_ptr():
+                        self._graph_moe_in.copy_(moe_in)
+                    if topk_weights.data_ptr() != self._graph_topk_w.data_ptr():
+                        self._graph_topk_w.copy_(topk_weights)
+                    self.cache.wait_copy(buf)
+                    routed = self._run_decode_moe_graphed(layer_idx)
+                else:
+                    self.cache.wait_copy(buf)
+                    g2 = self._run_marlin_gemm1_gemm2(
+                        moe_in,
+                        self._gpu_slots[:n_pairs].view(n, TOPK),
+                        topk_weights,
+                        self.cache.gpu_caches[layer_idx],
+                        num_experts=self.cache.cache_slots,
+                        top_k=TOPK,
+                    )
+                    routed = sum_topk_expert_outputs(g2, n, TOPK, H, torch.bfloat16)
                 if promote_misses:
                     self.cache.promote_decode_misses(layer_idx, miss_unique_list, step_id)
                 return routed, shared
