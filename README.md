@@ -1,4 +1,4 @@
-![Kolibri-1 78B Inference Engine](assets/banner.jpg)
+
 
 # Kolibri-4090: Hybrid RTX 4090 Serving Engine
 
