@@ -17,6 +17,7 @@ from src.engine import KolibriHybridEngine, format_chat_prompt  # noqa: E402
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate text locally with 50-layer Kolibri-1 NVFP4 Marlin.")
+    parser.add_argument("--model-dir", type=Path, default=PHASE2_MODEL_DIR, help="Path to quantized Kolibri-1 NVFP4 Marlin checkpoint directory")
     parser.add_argument("--prompt", type=str, default="Explain in 3 concise sentences what GPU Tensor Cores do.")
     parser.add_argument("--max-new-tokens", type=int, default=96)
     parser.add_argument("--reasoning-effort", type=str, default="none", choices=["none", "low", "medium", "high"])
@@ -28,7 +29,7 @@ def main() -> None:
     args = parser.parse_args()
 
     engine = KolibriHybridEngine(
-        model_dir=PHASE2_MODEL_DIR,
+        model_dir=args.model_dir,
         device=torch.device("cuda:0"),
         persistent_slots_per_layer=args.persistent_slots,
         max_seq_len=args.max_seq_len,

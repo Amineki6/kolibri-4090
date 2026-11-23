@@ -17,6 +17,20 @@ results/tmp_*.json
 *.tmp
 *.log
 
+# Dev-only & internal profiling scripts
+scripts/phase1_*.py
+scripts/bench_step3_*.py
+scripts/bench_hybrid.py
+
+# Benchmark & verification outputs (track only the 6 clean bench_suite progression reports)
+results/*
+!results/baseline.json
+!results/omp_pcore.json
+!results/omp_mempool.json
+!results/omp_mempool_cacheops.json
+!results/omp_mempool_cacheops_graphb.json
+!results/omp_mempool_cacheops_graphab.json
+
 # Nsight Systems traces & exports
 traces/
 *.nsys-rep
@@ -24,9 +38,18 @@ traces/
 *.qdrep
 *.qdstrm
 
-# Python / IDE
+# Python / IDE / local environment
 __pycache__/
 *.py[cod]
 .pytest_cache/
 .venv/
+venv/
+env/
+.conda/
+.env
+.vscode/
+.idea/
+*.swp
+*~
+*.prof
 .DS_Store

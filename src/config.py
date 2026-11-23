@@ -1,6 +1,8 @@
 """Kolibri-1 architecture constants and serving directory layout."""
 
+import os
 from pathlib import Path
+from typing import Optional
 
 SERVING_ROOT = Path(__file__).resolve().parent.parent
 CHECKPOINTS_DIR = SERVING_ROOT / "checkpoints"
@@ -8,11 +10,13 @@ RESULTS_DIR = SERVING_ROOT / "results"
 SCRATCH_DIR = SERVING_ROOT / "scratch"
 HF_CACHE_DIR = SCRATCH_DIR / "hf_cache"
 
-PHASE1_CKPT_PATH = Path("/home/mkina/profiling/profiling-moe/checkpoints/kolibri_2blocks_real.pt")
-PHASE2_MODEL_DIR = CHECKPOINTS_DIR / "kolibri-1-nvfp4-marlin"
+_PHASE1_CKPT_ENV = os.environ.get("KOLIBRI_PHASE1_CKPT")
+PHASE1_CKPT_PATH: Optional[Path] = Path(_PHASE1_CKPT_ENV) if _PHASE1_CKPT_ENV else None
+PHASE2_MODEL_DIR = Path(
+    os.environ.get("KOLIBRI_MODEL_DIR", str(CHECKPOINTS_DIR / "kolibri-1-nvfp4-marlin"))
+)
 
 HF_REPO_ID = "Aleph-Alpha/Kolibri-1-BF16"
-PROFILING_BENCH_DIR = "/home/mkina/profiling/profiling-moe/benchmarks"
 
 # Kolibri-1 architecture dimensions (verified from config.json & model.safetensors.index.json)
 H = 2560

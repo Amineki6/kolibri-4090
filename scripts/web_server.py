@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
-"""OpenAI-compatible HTTP server & Strata Web UI adapter for Kolibri-1 NVFP4 Marlin.
+"""OpenAI-compatible HTTP server & optional Strata Web UI adapter for Kolibri-1 NVFP4 Marlin.
 
-Serves Strata's static frontend assets read-only from `/home/mkina/profiling/Strata/serve/web`
-on top of `KolibriHybridEngine` with SSE streaming, `<think>...</think>` splitting, KV turn
-continuation reuse, `/load` + `/unload`, and live RTX 4090 + host telemetry at `/metrics`.
+Exposes `KolibriHybridEngine` over `/v1/chat/completions` with SSE streaming,
+`<think>...</think>` splitting, KV turn continuation reuse, `/load` + `/unload`,
+`/fast-mode`, and live RTX 4090 + host telemetry at `/metrics`. When `--web-dir` (or
+`KOLIBRI_WEB_DIR`) points to Strata's static `serve/web` assets, serves that frontend
+with a `Fast Decode` toggle injected; otherwise serves a built-in status page.
 """
 
 import argparse
 import collections
 import gc
+import html
 import json
 import os
 import re
@@ -36,7 +39,6 @@ from src.engine import (  # noqa: E402
     format_messages_prompt,
 )
 
-STRATA_WEB = Path("/home/mkina/profiling/Strata/serve/web")
 MODEL_NAME = "Kolibri-1 (W4A16-NVFP4 Marlin)"
 
 LOCALE_RE = re.compile(r"^/web/locales/(?P<name>[a-z]{2,3}(?:-[A-Z]{2})?\.json)$")
@@ -113,16 +115,126 @@ def render_index_html(html_text: str) -> bytes:
     return html_text.encode("utf-8")
 
 
-def resolve_subtree_file(path: str) -> Optional[Tuple[Path, str]]:
-    if any(c in path for c in ("\\", ":", "%", "\0")) or ".." in path:
+def render_fallback_index_html(model_name: str, host: str = "127.0.0.1", port: int = 8080) -> bytes:
+    """Self-contained status page served when no external Strata web asset directory is configured."""
+    safe_model = html.escape(model_name)
+    display_host = "127.0.0.1" if host in ("0.0.0.0", "::", "") else host
+    base_url = html.escape(f"http://{display_host}:{port}/v1")
+    curl_cmd = html.escape(
+        f'curl http://{display_host}:{port}/v1/chat/completions \\\n'
+        f'  -H "Content-Type: application/json" \\\n'
+        f'  -d \'{{"model": "{model_name}", "messages": [{{"role": "user", "content": "Hello!"}}], "max_tokens": 128}}\''
+    )
+    page = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{safe_model} — API Server</title>
+<style>
+  :root {{ color-scheme: dark; --bg: #0f1117; --card: #171a23; --border: #282d3d; --fg: #e6e9ef; --muted: #9aa3b2; --accent: #4f8cff; --ok: #22c55e; }}
+  * {{ box-sizing: border-box; }}
+  body {{ margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--fg); line-height: 1.5; }}
+  main {{ max-width: 780px; margin: 40px auto; padding: 0 20px; }}
+  .card {{ background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 18px; }}
+  h1 {{ margin: 0 0 6px; font-size: 1.4rem; }}
+  h2 {{ margin: 0 0 12px; font-size: 1.05rem; color: var(--muted); font-weight: 600; }}
+  code, pre {{ font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9rem; }}
+  pre {{ background: #0a0c10; border: 1px solid var(--border); border-radius: 8px; padding: 14px; overflow-x: auto; }}
+  .row {{ display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 16px; }}
+  .pill {{ display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 0.8rem; background: rgba(34, 197, 94, 0.14); color: var(--ok); border: 1px solid rgba(34, 197, 94, 0.35); }}
+  .btn {{ cursor: pointer; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: #222736; color: var(--fg); font-weight: 600; }}
+  .btn.active {{ background: var(--accent); border-color: var(--accent); color: #fff; }}
+  ul {{ margin: 0; padding-left: 18px; }}
+  li {{ margin: 6px 0; }}
+  a {{ color: var(--accent); text-decoration: none; }}
+  a:hover {{ text-decoration: underline; }}
+</style>
+</head>
+<body>
+<main>
+  <div class="card">
+    <div class="row">
+      <div>
+        <h1>{safe_model}</h1>
+        <span class="pill">OpenAI-Compatible Server Ready</span>
+      </div>
+      <button id="fast-mode-btn" class="btn" type="button" aria-pressed="false">Fast Decode: OFF</button>
+    </div>
+    <p style="color: var(--muted); margin: 0;">OpenAI Base URL: <code>{base_url}</code> (or relative <code>/v1</code>)</p>
+  </div>
+  <div class="card">
+    <h2>Endpoints</h2>
+    <ul>
+      <li><code>POST /v1/chat/completions</code> — Chat completions with SSE streaming &amp; KV turn reuse</li>
+      <li><a href="/v1/models"><code>GET /v1/models</code></a> — Loaded model status</li>
+      <li><a href="/health"><code>GET /health</code></a> — Engine health probe</li>
+      <li><a href="/metrics"><code>GET /metrics</code></a> — Live GPU/CPU &amp; throughput telemetry</li>
+      <li><a href="/fast-mode"><code>GET / POST /fast-mode</code></a> — Toggle telemetry/GC overhead during decode</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h2>Quick Test (<code>curl</code>)</h2>
+    <pre><code>{curl_cmd}</code></pre>
+  </div>
+</main>
+<script>
+(() => {{
+  const btn = document.getElementById("fast-mode-btn");
+  if (!btn) return;
+  let enabled = false;
+  function render() {{
+    btn.textContent = enabled ? "Fast Decode: ON" : "Fast Decode: OFF";
+    btn.setAttribute("aria-pressed", enabled ? "true" : "false");
+    btn.classList.toggle("active", enabled);
+  }}
+  async function sync() {{
+    try {{
+      const r = await fetch("/fast-mode", {{ cache: "no-store" }});
+      if (r.ok) {{
+        const d = await r.json();
+        enabled = !!d.fast_mode;
+        render();
+      }}
+    }} catch (e) {{}}
+  }}
+  btn.addEventListener("click", async () => {{
+    btn.disabled = true;
+    try {{
+      const r = await fetch("/fast-mode", {{
+        method: "POST",
+        headers: {{ "Content-Type": "application/json" }},
+        body: JSON.stringify({{ enabled: !enabled }}),
+      }});
+      if (r.ok) {{
+        const d = await r.json();
+        enabled = !!d.fast_mode;
+        render();
+      }}
+    }} catch (e) {{
+    }} finally {{
+      btn.disabled = false;
+    }}
+  }});
+  sync();
+}})();
+</script>
+</body>
+</html>
+"""
+    return page.encode("utf-8")
+
+
+def resolve_subtree_file(path: str, web_dir: Optional[Path]) -> Optional[Tuple[Path, str]]:
+    if web_dir is None or any(c in path for c in ("\\", ":", "%", "\0")) or ".." in path:
         return None
     m = LOCALE_RE.match(path)
     if m:
-        f = STRATA_WEB / "locales" / m.group("name")
+        f = web_dir / "locales" / m.group("name")
         return (f, "application/json; charset=utf-8") if f.is_file() else None
     prefix = "/web/vendor/katex/"
     if path.startswith(prefix):
-        vendor = (STRATA_WEB / "vendor" / "katex").resolve()
+        vendor = (web_dir / "vendor" / "katex").resolve()
         f = (vendor / path[len(prefix) :]).resolve()
         ctype = VENDOR_TYPES.get(f.suffix)
         if ctype and f.is_relative_to(vendor) and f.is_file():
@@ -456,7 +568,7 @@ class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     allow_reuse_address = True
 
 
-def make_handler(svc: KolibriService):
+def make_handler(svc: KolibriService, web_dir: Optional[Path] = None):
     class Handler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
 
@@ -487,28 +599,42 @@ def make_handler(svc: KolibriService):
             path = raw_path.rstrip("/")
 
             if path == "" or path == "/index.html":
-                f = STRATA_WEB / "index.html"
-                self._send_bytes(200, render_index_html(f.read_text("utf-8")), "text/html; charset=utf-8")
+                if web_dir is not None and (web_dir / "index.html").is_file():
+                    f = web_dir / "index.html"
+                    self._send_bytes(200, render_index_html(f.read_text("utf-8")), "text/html; charset=utf-8")
+                else:
+                    addr_host, addr_port = self.server.server_address[:2]
+                    self._send_bytes(
+                        200,
+                        render_fallback_index_html(MODEL_NAME, str(addr_host), int(addr_port)),
+                        "text/html; charset=utf-8",
+                    )
                 return
             if path.startswith("/fonts/"):
+                if web_dir is None:
+                    self._json(404, {"error": {"message": "not found"}})
+                    return
                 name = path[len("/fonts/") :]
-                f = STRATA_WEB / "fonts" / name
+                f = web_dir / "fonts" / name
                 if "/" in name or "\\" in name or not name.endswith(".woff2") or not f.is_file():
                     self._json(404, {"error": {"message": "not found"}})
                     return
                 self._send_bytes(200, f.read_bytes(), "font/woff2", cache="max-age=86400")
                 return
             if path.startswith(("/web/locales/", "/web/vendor/")):
-                sub = resolve_subtree_file(path)
+                sub = resolve_subtree_file(path, web_dir)
                 if sub is None:
                     self._json(404, {"error": {"message": "not found"}})
                     return
                 self._send_bytes(200, sub[0].read_bytes(), sub[1])
                 return
             if path.startswith("/web/"):
+                if web_dir is None:
+                    self._json(404, {"error": {"message": "not found"}})
+                    return
                 name = path[len("/web/") :]
                 ext = os.path.splitext(name)[1]
-                f = STRATA_WEB / name
+                f = web_dir / name
                 if "/" in name or "\\" in name or ext not in FLAT_WEB_TYPES or not f.is_file():
                     self._json(404, {"error": {"message": "not found"}})
                     return
@@ -935,16 +1061,30 @@ def make_handler(svc: KolibriService):
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Serve Kolibri-1 NVFP4 Marlin with Strata's Web UI.")
+    parser = argparse.ArgumentParser(
+        description="Serve Kolibri-1 NVFP4 Marlin (OpenAI-compatible API + optional Strata Web UI)."
+    )
     parser.add_argument("--host", type=str, default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8080)
+    parser.add_argument(
+        "--model-dir",
+        type=Path,
+        default=PHASE2_MODEL_DIR,
+        help="Path to quantized Kolibri-1 NVFP4 Marlin checkpoint directory",
+    )
     parser.add_argument("--persistent-slots", type=int, default=110)
     parser.add_argument("--max-seq-len", type=int, default=100_000)
     parser.add_argument("--prefill-chunk-size", type=int, default=256)
+    parser.add_argument(
+        "--web-dir",
+        type=Path,
+        default=Path(os.environ["KOLIBRI_WEB_DIR"]) if os.environ.get("KOLIBRI_WEB_DIR") else None,
+        help="Optional path to Strata static web assets directory",
+    )
     args = parser.parse_args()
 
     svc = KolibriService(
-        model_dir=PHASE2_MODEL_DIR,
+        model_dir=args.model_dir,
         persistent_slots=args.persistent_slots,
         max_seq_len=args.max_seq_len,
         prefill_chunk_size=args.prefill_chunk_size,
@@ -952,11 +1092,16 @@ def main() -> None:
     print(f"Loading Kolibri-1 W4A16_NVFP4_MARLIN (max_seq_len={args.max_seq_len}, slots/layer={args.persistent_slots})...")
     svc.load()
     print(f"Model loaded in {svc.engine.cache.stats.load_time_s:.2f}s.")
-    print(f"Strata Web UI ready at http://{args.host}:{args.port}")
-    print(f"For SSH access from local Chrome, run on your local machine:")
-    print(f"  ssh -N -L {args.port}:127.0.0.1:{args.port} <user>@<vm-host>")
+    display_host = "127.0.0.1" if args.host in ("0.0.0.0", "::", "") else args.host
+    print(f"OpenAI-compatible API ready at http://{display_host}:{args.port}/v1")
+    if args.web_dir is not None and (args.web_dir / "index.html").is_file():
+        print(f"Strata Web UI ready at http://{display_host}:{args.port}")
+    else:
+        print(f"Server status page at http://{display_host}:{args.port}")
+    print("For SSH access from a local browser, forward the port:")
+    print(f"  ssh -N -L {args.port}:127.0.0.1:{args.port} <user>@<remote-host>")
 
-    server = ThreadedHTTPServer((args.host, args.port), make_handler(svc))
+    server = ThreadedHTTPServer((args.host, args.port), make_handler(svc, web_dir=args.web_dir))
     try:
         server.serve_forever()
     except KeyboardInterrupt:

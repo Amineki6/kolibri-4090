@@ -50,6 +50,12 @@ EXPECTED_SHAPES = {
 def main() -> None:
     parser = argparse.ArgumentParser(description="Verify Phase 2 Kolibri-1 NVFP4 Marlin checkpoint.")
     parser.add_argument("--model-dir", type=Path, default=PHASE2_MODEL_DIR)
+    parser.add_argument(
+        "--bf16-ref",
+        type=Path,
+        default=PHASE1_CKPT_PATH,
+        help="Optional 2-block BF16 reference .pt for Step 2 parity check",
+    )
     args = parser.parse_args()
 
     dev = torch.device("cuda:0")
@@ -88,54 +94,60 @@ def main() -> None:
                 assert got_dtype == exp_dtype, f"{lf.name} {k} dtype {got_dtype} != {exp_dtype}"
     print(f"[+] Header shape/dtype/key verification PASSED for all {NUM_LAYERS} layers ({total_bytes / (1024**3):.2f} GiB total)")
 
-    # 2. Functional GPU execution parity check: Layers 0 & 1 vs Phase 1 real BF16 checkpoint
+    # 2. Functional GPU execution parity check: Layers 0 & 1 vs optional Phase 1 BF16 checkpoint
     inv_freq = make_rope_inv_freq(dev)
     workspace = marlin_make_workspace(dev, max_blocks_per_sm=4)
 
-    bf16_2blk = torch.load(PHASE1_CKPT_PATH, map_location="cpu")
-    bf16_layers_gpu = [{k: v.to(dev) for k, v in L.items()} for L in bf16_2blk]
-    del bf16_2blk
-    w13_refs = [L["w13"].transpose(1, 2).contiguous() for L in bf16_layers_gpu]
-    w2_refs = [L["w2"].transpose(1, 2).contiguous() for L in bf16_layers_gpu]
-
-    nvfp4_2blk = [
-        {k: v.to(dev) for k, v in load_file(str(layer_files[i]), device="cpu").items()}
-        for i in (0, 1)
-    ]
-
-    bf16_idx_by_id = {id(L): idx for idx, L in enumerate(bf16_layers_gpu)}
     parity_results = {}
-    with torch.inference_mode():
-        for n in (1, 64):
-            gen = torch.Generator(device=dev).manual_seed(9000 + n)
-            x = torch.empty((n, H), dtype=torch.bfloat16, device=dev).normal_(0.0, 1.0, generator=gen)
+    if args.bf16_ref is not None and args.bf16_ref.exists():
+        bf16_2blk = torch.load(args.bf16_ref, map_location="cpu")
+        bf16_layers_gpu = [{k: v.to(dev) for k, v in L.items()} for L in bf16_2blk]
+        del bf16_2blk
+        w13_refs = [L["w13"].transpose(1, 2).contiguous() for L in bf16_layers_gpu]
+        w2_refs = [L["w2"].transpose(1, 2).contiguous() for L in bf16_layers_gpu]
 
-            out_ref, ids_ref, _ = run_layers_forward(
-                x,
-                bf16_layers_gpu,
-                inv_freq,
-                lambda mx, mids, mwts, mL: exact_bf16_routed_moe(
-                    mx, mids, mwts,
-                    w13_refs[bf16_idx_by_id[id(mL)]],
-                    w2_refs[bf16_idx_by_id[id(mL)]],
-                ),
-            )
-            out_nvfp4, ids_nvfp4, _ = run_layers_forward(
-                x,
-                nvfp4_2blk,
-                inv_freq,
-                lambda mx, mids, mwts, mL: marlin_nvfp4_routed_moe(mx, mids, mwts, mL, workspace),
-            )
-            m = metrics(out_ref, out_nvfp4)
-            l1_overlap = sum(
-                len(set(ids_ref[1][t].tolist()) & set(ids_nvfp4[1][t].tolist())) / TOPK
-                for t in range(n)
-            ) / n
-            parity_results[str(n)] = {**m, "l1_router_topk_overlap": l1_overlap}
-            print(f"[+] Saved Phase2 Layers 0-1 vs Phase1 BF16 (N={n}): cos={m['cosine']:.6f}, rel_l2={m['rel_l2']:.6f}, l1_overlap={l1_overlap*100:.1f}%")
+        nvfp4_2blk = [
+            {k: v.to(dev) for k, v in load_file(str(layer_files[i]), device="cpu").items()}
+            for i in (0, 1)
+        ]
 
-    del bf16_layers_gpu, w13_refs, w2_refs, nvfp4_2blk
-    torch.cuda.empty_cache()
+        bf16_idx_by_id = {id(L): idx for idx, L in enumerate(bf16_layers_gpu)}
+        with torch.inference_mode():
+            for n in (1, 64):
+                gen = torch.Generator(device=dev).manual_seed(9000 + n)
+                x = torch.empty((n, H), dtype=torch.bfloat16, device=dev).normal_(0.0, 1.0, generator=gen)
+
+                out_ref, ids_ref, _ = run_layers_forward(
+                    x,
+                    bf16_layers_gpu,
+                    inv_freq,
+                    lambda mx, mids, mwts, mL: exact_bf16_routed_moe(
+                        mx, mids, mwts,
+                        w13_refs[bf16_idx_by_id[id(mL)]],
+                        w2_refs[bf16_idx_by_id[id(mL)]],
+                    ),
+                )
+                out_nvfp4, ids_nvfp4, _ = run_layers_forward(
+                    x,
+                    nvfp4_2blk,
+                    inv_freq,
+                    lambda mx, mids, mwts, mL: marlin_nvfp4_routed_moe(mx, mids, mwts, mL, workspace),
+                )
+                m = metrics(out_ref, out_nvfp4)
+                l1_overlap = sum(
+                    len(set(ids_ref[1][t].tolist()) & set(ids_nvfp4[1][t].tolist())) / TOPK
+                    for t in range(n)
+                ) / n
+                parity_results[str(n)] = {**m, "l1_router_topk_overlap": l1_overlap}
+                print(
+                    f"[+] Saved Phase2 Layers 0-1 vs Phase1 BF16 (N={n}): "
+                    f"cos={m['cosine']:.6f}, rel_l2={m['rel_l2']:.6f}, l1_overlap={l1_overlap*100:.1f}%"
+                )
+
+        del bf16_layers_gpu, w13_refs, w2_refs, nvfp4_2blk
+        torch.cuda.empty_cache()
+    else:
+        print("[skip] Skipping 2-block BF16 reference parity (no --bf16-ref checkpoint provided)")
 
     # 3. Smoke check sampled deep layers (including Layer 49 full-attention RNoPE)
     with torch.inference_mode():
@@ -169,14 +181,17 @@ def main() -> None:
         assert logits.shape == (3, 128000) and torch.isfinite(logits).all()
         print(f"[+] End-to-end token->logits smoke check PASSED: logits shape={tuple(logits.shape)} dtype={logits.dtype}")
 
-    verif_path = RESULTS_DIR / "phase2_verification.json"
-    verif_path.write_text(json.dumps({
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    verif_payload = {
         "model_dir": str(args.model_dir),
         "num_layers_verified": NUM_LAYERS,
         "total_bytes": total_bytes,
         "total_gib": total_bytes / (1024 ** 3),
-        "layers_0_1_parity": parity_results,
-    }, indent=2))
+    }
+    if parity_results:
+        verif_payload["layers_0_1_parity"] = parity_results
+    verif_path = RESULTS_DIR / "phase2_verification.json"
+    verif_path.write_text(json.dumps(verif_payload, indent=2))
     print(f"Saved verification report to {verif_path}")
 
 

@@ -1,0 +1,14 @@
+# Core runtime, quantization, and dataset dependencies for kolibri-4090.
+#
+# Install CUDA-enabled PyTorch, TensorRT-LLM, and FlashInfer first using the
+# commands matched to your CUDA toolkit (see README.md). Tested GPU stack:
+#   - torch==2.14.0+cu130
+#   - tensorrt-llm==1.3.0rc29
+#   - flashinfer-python==0.6.18
+
+safetensors>=0.4.0
+tokenizers>=0.20.0
+huggingface-hub>=0.26.0
+numpy>=2.0.0
+ninja>=1.11.0
+datasets>=3.0.0
