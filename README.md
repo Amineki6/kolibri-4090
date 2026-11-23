@@ -1,4 +1,4 @@
-![Kolibri-1 78B Inference Engine](assets/banner_n.jpg)
+![Kolibri-1 78B Inference Engine](assets/banner_h.jpg)
 
 # Kolibri-4090: Hybrid RTX 4090 Serving Engine
 
@@ -199,7 +199,7 @@ python scripts/web_server.py --persistent-slots 96 --max-seq-len 32768
 ```text
 kolibri-4090/
 ├── assets/
-│   └── banner.jpg
+│   └── banner.svg
 ├── csrc/
 │   ├── include/tensorrt_llm/...     # Minimal vendored TRT-LLM headers for standalone compilation
 │   ├── kolibri_kernels_ext.cpp      # PyTorch C++/CUDA extension bindings & CUDA mempool tuning
